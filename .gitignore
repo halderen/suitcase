@@ -31,3 +31,4 @@ libtool
 ltmain.sh
 test.trs
 .libs
+nbproject/private
