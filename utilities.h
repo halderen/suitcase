@@ -22,6 +22,33 @@
 #endif
 #endif
 
+#ifdef __cplusplus
+class mkstring
+{
+private:
+  std::ostringstream os;
+public:
+  template <class T> mkstring &operator<<(const T &t) {
+    os << t;
+    return *this;
+  }
+  mkstring& operator<<(const char* m) {
+    os << m;
+    return *this;
+  }
+  mkstring& operator<<(const std::string& s) {
+    os << s;
+    return *this;
+  }
+  static std::string format(const char *fmt, va_list ap);
+  static std::string format(const char *fmt, ...)
+     __attribute__ ((__format__ (__printf__, 1, 2)));
+  operator std::string() const { return os.str(); }
+  const std::string str() const { return os.str(); };
+  const char* c_str() const { return os.str().c_str(); };
+};
+#endif
+
 #ifdef DEBUG
 # define BUG(ARG) ARG
 #else
@@ -44,5 +71,6 @@ typedef void (*functioncast_t)(void);
 extern functioncast_t functioncast(void*generic);
 
 extern int clamp(int value, int lbnd, int ubnd);
+unsigned long long int rnd(void);
 
 #endif

@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -11,10 +14,13 @@
 #include <yaml.h>
 #include "logging.h"
 #include "settings.h"
+#include "utilities.h"
 
 static logger_cls_type logger = LOGGER_INITIALIZE(__FILE__);
 
 static settings_handle defaulthandle = NULL;
+
+typedef int (*namedtranslatetype)(const char*,long*resultvalue);
 
 static yaml_node_t*
 getnodebyname(yaml_document_t *document, yaml_node_t *node, const char* arg, size_t len)
@@ -178,11 +184,40 @@ parsefunccount(void* user, const char* str, void* resultvalue)
             ++str;
     }
     *resultlong = strtol(str, &end, 0);
-    if (errno) {
+    if (errno || str==end) {
         return 1;
     } else {
         return 0;
     }
+}
+
+static int
+parsefuncnamed(void* user, const char* str, void* resultvalue)
+{
+    char* end;
+    const char* last;
+    long* resultlong = (long*) resultvalue;
+    namedtranslatetype translate = (namedtranslatetype) functioncast(user);
+    errno = 0;
+    while(isspace(*str))
+      ++str;
+    if (*str == '#') {
+        ++str;
+        while(isspace(*str))
+            ++str;
+        *resultlong = strtol(str, &end, 0);
+        if (errno || str==end) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+    for (last=str; *last && !isspace(*last); ++last)
+        ;
+    if (*last) {
+        str = strndupa(str, last-str);
+    }
+    return translate(str, resultvalue);
 }
 
 
@@ -377,13 +412,13 @@ settings_getcount(settings_handle handle, long* resultvalue, const long* default
 }
 
 int
-settings_getperiod(settings_handle handle, long* resultvalue, const long* defaultvalue, const char* fmt, ...)
+settings_getnamed(settings_handle handle, long* resultvalue, const long* defaultvalue, int (*translate)(const char*,long*resultvalue), const char* fmt, ...)
 {
     int rc;
     va_list ap;
     yaml_document_t* document = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefunccount, NULL, fmt, ap);
+    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefuncnamed, translate, fmt, ap);
     va_end(ap);
     return rc;
 }
@@ -408,6 +443,8 @@ settings_configure(settings_handle* cfghandleptr, char* sysconfdir, char* syscon
         basefd = AT_FDCWD;
     
     if (!settings_access(cfghandleptr, basefd, sysconffile)) {
+
+        /* parse generic processing */
         cfghandle = (cfghandleptr ? *cfghandleptr : NULL);
         verbosity = -1;
         if(cmdline_verbosity <= 0) {
@@ -433,6 +470,8 @@ settings_configure(settings_handle* cfghandleptr, char* sysconfdir, char* syscon
                     break;
             }
         }
+
+        /* parse per class logging */
         settings_getcompound(cfghandle, &count, "logging.classes");
         for(int i=0; i<count; i++) {
             settings_getstring(cfghandle, &name, NULL, "logging.classes.%d.name", i);

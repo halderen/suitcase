@@ -244,22 +244,10 @@ logger_resetup(logger_cls_type* cls)
 void
 logger_configurecls(const char* name, logger_lvl_type minlvl, logger_procedure proc)
 {
-    const char *minlvlstr;
-    switch(minlvl) {
-        case logger_FATAL:  minlvlstr = "fatal";        break;
-        case logger_ERROR:  minlvlstr = "error";        break;
-        case logger_WARN:   minlvlstr = "warning";      break;
-        case logger_INFO:   minlvlstr = "info";         break;
-        case logger_DEBUG:  minlvlstr = "debug";        break;
-        case logger_DIAG:   minlvlstr = "diagnostics";  break;
-        default:
-            minlvlstr = "unknown";
-    }
-    fprintf(stderr,"logging configura class %s to minimum level %s\n",name,minlvlstr);
     pthread_mutex_lock(&mutex);
     logger_setup.nchains += 1;
     logger_setup.chains = realloc(logger_setup.chains, sizeof(struct logger_chain_struct) * logger_setup.nchains);
-    logger_setup.chains[logger_setup.nchains-1].name = strdup(name);
+    logger_setup.chains[logger_setup.nchains-1].name = (name ? strdup(name) : NULL);
     logger_setup.chains[logger_setup.nchains-1].minlvl = minlvl;
     logger_setup.chains[logger_setup.nchains-1].logger = proc;
     logger_setup.serial += 1;

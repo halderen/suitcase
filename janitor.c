@@ -136,7 +136,7 @@ janitor_threadclass_setminstacksize(janitor_threadclass_t threadclass, size_t mi
 }
 
 static void fail(const char* file, int line, const char* func, const char* expr, int stat);
-#define CHECKFAIL(EX) do { int CHECKFAIL; if((CHECKFAIL = (EX))) { fail(__FILE__,__LINE__,__FUNCTION__,#EX,CHECKFAIL); goto fail; } } while(0)
+#define CHECKFAIL(EX) do { int CHECKFAIL; if((CHECKFAIL = (EX))) { fail(__FILE__,__LINE__,__func__,#EX,CHECKFAIL); goto fail; } } while(0)
 
 static void
 fail(const char* file, int line, const char* func, const char* expr, int stat)
@@ -358,7 +358,6 @@ janitor_thread_start(janitor_thread_t thread)
 int
 janitor_thread_join(janitor_thread_t thread)
 {
-    janitor_thread_t info;
     int status;
     status = pthread_join(thread->thread, NULL);
     janitor_thread_dispose(thread);
@@ -497,6 +496,8 @@ outputbacktrace(int skips, void *workaround)
 #endif
 #endif
 #endif
+    (void)skips;
+    (void)workaround;
 #ifdef HAVE_BACKTRACE_FULL
     backtrace_full(state, skips, (backtrace_full_callback) callback, (backtrace_error_callback) errorhandler, NULL);
 #else
@@ -550,6 +551,7 @@ handlesignal(int signal, siginfo_t* info, void* data)
 #endif
 #endif
 #endif
+    (void)thrinfo;
     switch (info->si_signo) {
         case SIGQUIT:
             signalname = "Threaddump";
@@ -633,6 +635,7 @@ callbackstring(void* data, uintptr_t pc, const char *filename, int lineno, const
 {
     int siz, len;
     char** ptr = data;
+    (void)pc;
     if (filename != NULL || lineno != 0 || function == NULL) {
         siz = snprintf(NULL, 0, "  %s:%d in %s()\n", filename, lineno, function);
         if (*ptr != NULL) {
@@ -681,6 +684,9 @@ janitor_trapsignals(char* argv0)
     struct sigaction newsigaction;
     static struct backtrace_state *frames;
 
+    (void)frames;
+    (void)ss;
+    
 #ifdef HAVE_BACKTRACE_FULL
     CHECKFAIL((state  = backtrace_create_state(argv0, 0, (backtrace_error_callback)errorhandler, NULL)) == NULL);
     CHECKFAIL((frames = backtrace_create_state(argv0, 0, (backtrace_error_callback)errorhandler, NULL)) == NULL);
@@ -724,7 +730,6 @@ fail:
 }
 
 #ifndef HAVE_PTHREAD_BARRIER
-#endif
 
 struct janitor_pthread_barrier_struct {
     pthread_mutex_t mutex;
@@ -793,3 +798,4 @@ janitor_pthread_barrier_wait(pthread_barrier_t* barrier)
     }
 }
 
+#endif

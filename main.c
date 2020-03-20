@@ -3,9 +3,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <string.h>
 #include "daemonize.h"
-#include "settings.h"
 #include "utilities.h"
+#include "settings.h"
 
 char *argv0;
 

@@ -1,6 +1,12 @@
 .PHONY: analyze
 
 MAINTAINERCLEANFILES=$(srcdir)/Makefile.in
+# config.log config.status \
+# $(srcdir)/configure \
+# $(srcdir)/install-sh $(srcdir)/ltmain.sh $(srcdir)/missing \
+# $(srcdir)/depcomp $(srcdir)/aclocal.m4 $(srcdir)/compile \
+# $(srcdir)/config.guess $(srcdir)/config.sub
+
 CLEANFILES=$(srcdir)/*~ core* vgcore*
 CLEANFILES+=schema_mysql.h
 
@@ -10,7 +16,7 @@ AM_CFLAGS = -DSYSCONFDIR=@sysconfdir@
 libsuitcase_CFLAGS = -D_REENTRANT -O2
 suitcase_CFLAGS = @MYSQL_CFLAGS@ @SQLITE3_CFLAGS@ -D_REENTRANT -O2
 suitcase_LDFLAGS = @MYSQL_LDFLAGS@ @SQLITE3_LDFLAGS@
-suitcase_LDADD = schema_mysql.o schema_sqlite.o $(LIBCURL) -ldl
+suitcase_LDADD = schema_mysql.o schema_sqlite.o $(LIBCURL) -ldl @PTHREAD_LIBS@
 
 check_PROGRAMS = test
 lib_LTLIBRARIES = libsuitcase.la
@@ -24,13 +30,15 @@ uninstall-hook:
 	rm -f $(DESTDIR)$(bindir)/suitcased$(EXEEXT)
 
 BUILT_SOURCES = schema_mysql.h
-EXTRA_DIST = schema_mysql.sql schema_sqlite.sql
+EXTRA_DIST = $(srcdir)/LICENSE $(srcdir)/README.md
+EXTRA_DIST += schema_mysql.sql schema_sqlite.sql
 
 libsuitcase_la_SOURCES = tree.c tree.h
 suitcase_SOURCES  = main.c
 suitcase_SOURCES += daemonize.c daemonize.h janitor.c janitor.h
 suitcase_SOURCES += settings.c settings.h logging.c logging.h
 suitcase_SOURCES += utilities.c utilities.h
+
 
 if USE_SQLITE3
 suitcase_SOURCES += schema_sqlite.h
@@ -62,6 +70,11 @@ TESTS = $(check_PROGRAMS)
 	echo "extern const char " $(*)_end"[];" >> $(*).h
 	echo "extern const char " $(*)_size_sym"[];" >> $(*).h
 	echo "#define $(*)_size ((int)$(*)_size_sym)" >> $(*).h
+
+doxygen:
+	rm -rf $(top_builddir)/doxygen
+	env $(DX_ENV) SRCDIR=$(top_srcdir) OUTPUTDIR=$(top_builddir)/doxygen \
+	    $(DX_DOXYGEN) $(top_builddir)/doxygen
 
 analyze:
 	cppcheck --quiet --enable=unusedFunction $(suitcase_SOURCES)
