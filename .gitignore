@@ -33,3 +33,7 @@ test.trs
 .libs
 nbproject/private
 doxygen
+schema_mysql.h
+schema_sqlite.h
+sqlstmts_mysql.h
+sqlstmts_sqlite.h
