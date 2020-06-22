@@ -418,7 +418,7 @@ settings_getnamed(settings_handle handle, long* resultvalue, const long* default
     va_list ap;
     yaml_document_t* document = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefuncnamed, translate, fmt, ap);
+    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefuncnamed, (void*)translate, fmt, ap);
     va_end(ap);
     return rc;
 }
