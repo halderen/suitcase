@@ -109,6 +109,10 @@ void
 janitor_threadclass_setdetached(janitor_threadclass_t threadclass)
 {
     threadclass->detached = 1;
+    if (!threadclass->hasattr) {
+        pthread_attr_init(&threadclass->attr);
+    }
+    pthread_attr_setdetachstate(&threadclass->attr, PTHREAD_CREATE_DETACHED);
 }
 
 void
@@ -127,7 +131,9 @@ void
 janitor_threadclass_setminstacksize(janitor_threadclass_t threadclass, size_t minstacksize)
 {
     size_t stacksize;
-    pthread_attr_init(&threadclass->attr);
+    if (!threadclass->hasattr) {
+        pthread_attr_init(&threadclass->attr);
+    }
     pthread_attr_getstacksize(&threadclass->attr, &stacksize);
     if (stacksize < minstacksize) {
         pthread_attr_setstacksize(&threadclass->attr, minstacksize);
@@ -241,7 +247,7 @@ janitor_thread_dispose(janitor_thread_t info)
         }
         pthread_mutex_unlock(&threadlock);
     }
-    /*free(info);*/
+    free(info);
 }
 
 static void
@@ -276,6 +282,9 @@ janitor_thread_finished(janitor_thread_t info)
         }
         finishedthreadlist = info;
         pthread_mutex_unlock(&threadlock);
+    } else {
+        pthread_detach(pthread_self());
+        janitor_thread_dispose(info);
     }
 }
 
@@ -285,15 +294,14 @@ runthread(void* data)
     int err;
     sigset_t sigset;
     struct janitor_thread_struct* info;
-    /** alt stack code was removed this commit (check git blame)
-     * Free of the stack caused libxml to crash. Probably had some static
-     * stuff pointing to the stack. But not freeing caused 8K leak for every
-     * cmd handle thread during lifetime of daemon.
-     *
-     * As a consequence janitor cannot handle running out of stackspace.
-     */
+    stack_t ss;
+    stack_t prevss;
     info = (struct janitor_thread_struct*) data;
     pthread_setspecific(threadlocator, info);
+    ss.ss_sp = malloc(SIGSTKSZ);
+    ss.ss_size = SIGSTKSZ;
+    ss.ss_flags = 0;
+    sigaltstack(&ss, &prevss);
     pthread_barrier_wait(&info->startbarrier);
     if (info->blocksignals) {
         sigfillset(&sigset);
@@ -308,6 +316,8 @@ runthread(void* data)
             report("pthread_sigmask: %s (%d)", strerror(err), err);
     }
     info->runfunc(info->rundata);
+    sigaltstack(&prevss, NULL);
+    free(ss.ss_sp); /* libxml has/had problems when freeing this as it tries to access it */
     janitor_thread_unregister(info);
     janitor_thread_finished(info);
     return NULL;
@@ -385,7 +395,6 @@ janitor_thread_tryjoinall(janitor_threadclass_t threadclass)
         }
         pthread_mutex_unlock(&threadlock);
         if (foundthread) {
-            free(foundthread->rundata);
             janitor_thread_join(foundthread);
         }
     } while(foundthread);
@@ -455,7 +464,7 @@ static struct backtrace_state *frames = NULL;
 static pthread_mutex_t frameslock = PTHREAD_MUTEX_INITIALIZER;
 
 static int
-callback(void* data, uintptr_t pc, const char *filename, int lineno, const char *function)
+callback(__attribute__((unused)) void* data, __attribute__((unused)) uintptr_t pc, const char *filename, int lineno, const char *function)
 {
     if (filename == NULL && lineno == 0 && function == NULL) {
         alert("  inlined method\n");
@@ -469,7 +478,7 @@ callback(void* data, uintptr_t pc, const char *filename, int lineno, const char 
 }
 
 static void
-errorhandler(void* data, const char *msg, int xerrno)
+errorhandler(__attribute__((unused)) void* data, const char *msg, int __attribute__((unused)) xerrno)
 {
     int len = strlen(msg);
     (void) (write(2, msg, len));
@@ -496,8 +505,6 @@ outputbacktrace(int skips, void *workaround)
 #endif
 #endif
 #endif
-    (void)skips;
-    (void)workaround;
 #ifdef HAVE_BACKTRACE_FULL
     backtrace_full(state, skips, (backtrace_full_callback) callback, (backtrace_error_callback) errorhandler, NULL);
 #else
@@ -535,7 +542,6 @@ handlesignal(int signal, siginfo_t* info, void* data)
 {
     const char* signalname;
     Dl_info btinfo;
-    janitor_thread_t thrinfo;
     (void) signal;
     (void) data;
 #ifndef HAVE_BACKTRACE_FULL
@@ -551,7 +557,6 @@ handlesignal(int signal, siginfo_t* info, void* data)
 #endif
 #endif
 #endif
-    (void)thrinfo;
     switch (info->si_signo) {
         case SIGQUIT:
             signalname = "Threaddump";
@@ -680,13 +685,9 @@ int
 janitor_trapsignals(char* argv0)
 {
     sigset_t mask;
-    stack_t ss;
     struct sigaction newsigaction;
     static struct backtrace_state *frames;
 
-    (void)frames;
-    (void)ss;
-    
 #ifdef HAVE_BACKTRACE_FULL
     CHECKFAIL((state  = backtrace_create_state(argv0, 0, (backtrace_error_callback)errorhandler, NULL)) == NULL);
     CHECKFAIL((frames = backtrace_create_state(argv0, 0, (backtrace_error_callback)errorhandler, NULL)) == NULL);
@@ -694,7 +695,8 @@ janitor_trapsignals(char* argv0)
     (void) argv0;
 #endif
 
-    /*ss.ss_sp = malloc(SIGSTKSZ);
+    /* stack_t ss;
+    ss.ss_sp = malloc(SIGSTKSZ);
     ss.ss_size = SIGSTKSZ;
     ss.ss_flags = 0;
     CHECKFAIL(sigaltstack(&ss, NULL) == -1);*/
@@ -728,8 +730,6 @@ janitor_disablecoredump(void)
 fail:
     return -1;
 }
-
-#ifndef HAVE_PTHREAD_BARRIER
 
 struct janitor_pthread_barrier_struct {
     pthread_mutex_t mutex;
@@ -797,5 +797,3 @@ janitor_pthread_barrier_wait(pthread_barrier_t* barrier)
         return 0;
     }
 }
-
-#endif
