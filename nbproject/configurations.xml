@@ -7,6 +7,7 @@
       <in>logging.c</in>
       <in>main.c</in>
       <in>settings.c</in>
+      <in>sqlstmts.c</in>
       <in>tree.c</in>
       <in>utilities.c</in>
     </df>
@@ -30,6 +31,7 @@
       </toolsSet>
       <flagsDictionary>
         <element flagsID="0" commonFlags="-mtune=generic -march=x86-64 -g -O2 -O2"/>
+        <element flagsID="1" commonFlags="-mtune=generic -march=x86-64 -g -O2 -fPIC"/>
       </flagsDictionary>
       <codeAssistance>
       </codeAssistance>
@@ -41,6 +43,7 @@
           <executablePath></executablePath>
           <cTool>
             <incDir>
+              <pElem>/usr/lib64/gcc/x86_64-slackware-linux/9.3.0/include</pElem>
               <pElem>.</pElem>
             </incDir>
           </cTool>
@@ -70,11 +73,12 @@
         <cTool flags="0">
         </cTool>
       </item>
-      <item path="tree.c" ex="false" tool="0" flavor2="2">
-        <cTool>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
+      <item path="sqlstmts.c" ex="false" tool="0" flavor2="3">
+        <cTool flags="0">
+        </cTool>
+      </item>
+      <item path="tree.c" ex="false" tool="0" flavor2="3">
+        <cTool flags="1">
         </cTool>
       </item>
       <item path="utilities.c" ex="false" tool="0" flavor2="3">
