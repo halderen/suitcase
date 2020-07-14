@@ -2,25 +2,37 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#ifndef TREE_H
+#define TREE_H
+
 #ifndef tree_DEFAULT_MAXDEPTH
 #define tree_DEFAULT_MAXDEPTH 40
 #endif
 
 struct tree;
 struct tree_node;
+
+/**
+ * Tree reference structure.
+ * Used to keep track of certain location in the tree.
+ * Members of this structure should not be referenced or manipulated
+ * directly.  The structure definition is public in order to perform
+ * the static initialization of TREE_REFERNCE_INITIALIZER
+ */
 struct tree_reference {
     struct tree* tree;
     int depth;
     int maxdepth;
     struct tree_node* path[tree_DEFAULT_MAXDEPTH];
 };
+
+#define TREE_REFERENCE_INITIALIZER { NULL, 0, tree_DEFAULT_MAXDEPTH, { 0 } }
+
 typedef struct tree* tree_type;
 typedef struct tree_node* tree_cursor_type;
 typedef struct tree_reference tree_reference_type;
 typedef int (*tree_comparator_type)(const void* a, const void* b, void* user_data);
 typedef int (*tree_visitor_type)(void* item, void* user);
-
-#define TREE_REFERENCE_INITIALIZER { NULL, 0, tree_DEFAULT_MAXDEPTH, { 0 } }
 
 tree_type tree_create(tree_comparator_type compare_func, void* compare_cargo);
 void tree_destroy(tree_type tree);
@@ -42,3 +54,5 @@ void* tree_refreplace(tree_reference_type* ref, void* item);
 void* tree_lookupfirst(tree_type tree);
 void* tree_lookupfirstcursor(tree_type tree, tree_cursor_type* node);
 void* tree_cursornext(tree_cursor_type* node);
+
+#endif
