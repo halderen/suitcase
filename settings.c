@@ -197,7 +197,7 @@ parsefuncnamed(void* user, const char* str, void* resultvalue)
     char* end;
     const char* last;
     long* resultlong = (long*) resultvalue;
-    namedtranslatetype translate = (namedtranslatetype) functioncast(user);
+    namedtranslatetype translate = (namedtranslatetype) *(functioncast_t*)user;
     errno = 0;
     while(isspace(*str))
       ++str;
@@ -416,9 +416,10 @@ settings_getnamed(settings_handle handle, long* resultvalue, const long* default
 {
     int rc;
     va_list ap;
+    functioncast_t funcptr = (functioncast_t)translate;
     yaml_document_t* document = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefuncnamed, (void*)translate, fmt, ap);
+    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefuncnamed, &funcptr, fmt, ap);
     va_end(ap);
     return rc;
 }
