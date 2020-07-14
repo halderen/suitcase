@@ -29,7 +29,8 @@ install-exec-hook:
 uninstall-hook:
 	rm -f $(DESTDIR)$(bindir)/suitcased$(EXEEXT)
 
-BUILT_SOURCES = schema_mysql.h schema_sqlite.h
+BUILT_SOURCES = sqlstmts_sqlite.inc
+BUILT_SOURCES += schema_mysql.h schema_sqlite.h
 EXTRA_DIST = $(srcdir)/LICENSE $(srcdir)/README.md
 EXTRA_DIST += schema_mysql.txt schema_sqlite.txt
 
@@ -38,13 +39,14 @@ suitcase_SOURCES  = main.c
 suitcase_SOURCES += daemonize.c daemonize.h janitor.c janitor.h
 suitcase_SOURCES += settings.c settings.h logging.c logging.h
 suitcase_SOURCES += utilities.c utilities.h
+suitcase_SOURCES += tree.c tree.h
 suitcase_SOURCES += sqlstmts.c
+suitcase_SOURCES += sqlstmts_sqlite.inc
 
-
-if USE_SQLITE3
+if HAVE_SQLITE3
 suitcase_SOURCES += schema_sqlite.h
 endif
-if USE_MYSQL
+if HAVE_MYSQL
 suitcase_SOURCES += schema_mysql.h
 endif
 
@@ -57,8 +59,8 @@ test_LDADD = @CUNIT_LIBS@ schema_mysql.o -lmysqlclient
 TESTS = $(check_PROGRAMS)
 
 %.h %.o : %.txt
-	-if [ "`tail -c 1 schema_mysql.sql | tr '\000' X`" != X -o \
-	     "`tail -c 1 schema_mysql.sql | tr '\000' Y`" != Y ]; then \
+	-if [ "`tail -c 1 $(<) | tr '\000' X`" != X -o \
+	     "`tail -c 1 $(<) | tr '\000' Y`" != Y ]; then \
 	  echo -n 0 | tr 0 '\000' >> $(<) ; \
 	fi
 	-elfO=`objdump -a /usr/bin/env | \
@@ -75,9 +77,11 @@ TESTS = $(check_PROGRAMS)
 	echo "#define $(*)_size ((int)$(*)_size_sym)" >> $(*).h
 
 %.inc: %.sql
-	awk -f sql2inc.awk $(*).sql > $(*).inc a=$(*)
+	$(AWK) > $(*).inc -f sql2inc.awk \
+	       -v prefix=$(*)_ -v postfix=_ -v queryarray=$(*)_array \
+	       $(*).sql
 
-sqlstmts.c: sqlstmts_sqlite.inc
+sqlstmts_sqlite.inc: Makefile
 
 doxygen:
 	rm -rf $(top_builddir)/doxygen

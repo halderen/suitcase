@@ -16,6 +16,7 @@ ACX_STRICT
 dnl CHECK_COMPILER_FLAG(std=c99, [C99FLAG="-std=c99"])
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h string.h])
+AC_CHECK_HEADERS([sqlite3.h])
 AC_CHECK_FUNCS([strrchr])
 AC_C_CONST
 AC_TYPE_SIZE_T
@@ -28,7 +29,7 @@ AX_C___ATTRIBUTE__
 ACX_CUNIT
 AM_CONDITIONAL([WITH_CUNIT], [test "${with_cunit}" != "no" -a -n "$CUNIT_LIBS"])
 AX_LIB_SQLITE3
-AX_LIB_MYSQL()
+AX_LIB_MYSQL
 
 ACX_LIBMICROHTTPD
 ACX_LIBJANSSON
@@ -47,8 +48,10 @@ supported])])
 AC_CHECK_LIB(backtrace, backtrace_full, [AC_DEFINE([HAVE_BACKTRACE_FULL], [1], [
 Define if backtrace_full supported]) LIBS="$LIBS -lbacktrace"])
 
-AM_CONDITIONAL([USE_MYSQL],[grep HAVE_MYSQL confdefs.h > /dev/null])
-AM_CONDITIONAL([USE_SQLITE3],[grep HAVE_SQLITE3 confdefs.h > /dev/null])
+AM_CONDITIONAL([HAVE_MYSQL],[grep HAVE_MYSQL confdefs.h > /dev/null])
+AM_CONDITIONAL([HAVE_SQLITE3],[grep HAVE_SQLITE3 confdefs.h > /dev/null])
+DYNAMIC_SQLITE3
+DYNAMIC_MYSQL
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
