@@ -7,6 +7,11 @@ typedef struct dbsimple_connection_struct* dbsimple_connection_type;
 struct dbsimple_session_struct;
 typedef struct dbsimple_session_struct* dbsimple_session_type;
 
+#define dbsimple_INTEGER        0
+#define dbsimple_STRING         1
+#define dbsimple_REFERENCE      2
+#define dbsimple_BACKREFERENCE  3
+
 struct dbsimple_field {
     int type;
     off_t offset;
@@ -35,8 +40,8 @@ int dbsimple_closeconnection(dbsimple_connection_type);
 int dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionPtr);
 int dbsimple_closesession(dbsimple_session_type);
 int dbsimple_sync(dbsimple_session_type, const char* const** query, void* data);
-void* dbsimple_fetch(dbsimple_session_type, const char* fetchmodel, ...);
+void* dbsimple_fetch(dbsimple_session_type, const char* const** model, ...);
 int dbsimple_commit(dbsimple_session_type);
-void dbsimple_dirty(void *ptr);
+void dbsimple_dirty(dbsimple_session_type, void *ptr);
 
 #endif
