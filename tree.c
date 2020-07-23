@@ -5,8 +5,7 @@
 #include <assert.h>
 #include "tree.h"
 
-typedef int (*tree_comparator_type)(const void* a, const void* b, void* user_data);
-typedef int (*visitor)(void* item, void* user);
+typedef int (*tree_visitor_type)(void* item, void* user);
 
 #define MAX_GTREE_HEIGHT 40
 
@@ -438,7 +437,7 @@ removenode(struct tree_reference* cursor)
 }
 
 static int
-preorder(struct tree_node* node, visitor traverse_func, void* user)
+preorder(struct tree_node* node, tree_visitor_type traverse_func, void* user)
 {
     if ((*traverse_func) (node->item, user))
         return 1;
@@ -454,7 +453,7 @@ preorder(struct tree_node* node, visitor traverse_func, void* user)
 }
 
 static int
-inorder(struct tree_node* node, visitor traverse_func, void* user)
+inorder(struct tree_node* node, tree_visitor_type traverse_func, void* user)
 {
     if (node->left_child) {
         if (inorder(node->left, traverse_func, user))
@@ -470,7 +469,7 @@ inorder(struct tree_node* node, visitor traverse_func, void* user)
 }
 
 static int
-postorder(struct tree_node* node, visitor traverse_func, void* user)
+postorder(struct tree_node* node, tree_visitor_type traverse_func, void* user)
 {
     if (node->left_child) {
         if (postorder(node->left, traverse_func, user))
@@ -520,7 +519,7 @@ tree_size(struct tree *tree)
 }
 
 void
-tree_foreach(struct tree* tree, visitor func, void* user)
+tree_foreach(struct tree* tree, tree_visitor_type func, void* user)
 {
     struct tree_node* node;
     if (!tree->root)
@@ -534,7 +533,7 @@ tree_foreach(struct tree* tree, visitor func, void* user)
 }
 
 void
-tree_traverse(struct tree* tree, visitor traverse_func, int traverse_type, void* traverse_data)
+tree_traverse(struct tree* tree, tree_visitor_type traverse_func, int traverse_type, void* traverse_data)
 {
     if (!tree->root)
         return;
