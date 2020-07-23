@@ -18,8 +18,6 @@ const char* const sqlstmts_sqlite_schema_[] = {
 
   "CREATE UNIQUE INDEX policyIndex ON policy ( id )",
 
-  "INSERT INTO policy VALUES ( 0, 'default' )",
-
   "CREATE TABLE zone (\n"
   "  id INT NOT NULL,\n"
   "  name TEXT NOT NULL,\n"
@@ -28,9 +26,23 @@ const char* const sqlstmts_sqlite_schema_[] = {
   "  parent INT default NULL\n"
   ")",
 
-  "CREATE UNIQUE INDEX zoneIndex on policy ( id )",
+  "CREATE UNIQUE INDEX zoneIndex on zone ( id )",
 
   "INSERT INTO properties VALUES ( 'version', 4 )",
+
+  "INSERT INTO policy VALUES ( 0, \"default\" )",
+
+  "INSERT INTO policy VALUES ( 1, \"experimental\" )",
+
+  "INSERT INTO zone VALUES ( 0, \"example.com\", 1, 0, NULL )",
+
+  "INSERT INTO zone VALUES ( 1, \"example.org\", 1, 0, NULL )",
+
+  "INSERT INTO zone VALUES ( 2, \"opendnssec.org\", 1, 1, NULL )",
+
+  "INSERT INTO zone VALUES ( 3, \"opendnssec.com\", 1, 1, 2 )",
+
+  "UPDATE properties SET propertyValue = 3 WHERE propertyName = 'version'",
 
   NULL };
 
@@ -41,10 +53,6 @@ const char* const sqlstmts_sqlite_schema1_[] = {
   ")",
 
   "CREATE UNIQUE INDEX policyIndex ON policy ( id )",
-
-  "INSERT INTO policy VALUES ( 0, \"default\" )",
-
-  "UPDATE properties SET propertyValue = 3 WHERE propertyName = 'version'",
 
   NULL };
 
@@ -86,9 +94,16 @@ const char* const sqlstmts_sqlite_update_policy_[] = {
   NULL };
 
 const char* const sqlstmts_sqlite_update_zone_[] = {
-  "DELETE FROM zone WHERE id = ? AND revision = ?\n",
+  "DELETE FROM zone WHERE id = ? AND revision = ?",
 
-  "INSERT INTO zone VALUES ( ?, ?, ?, ?, ? )",
+  "INSERT INTO zone ( id, revision, name, policy ) VALUES ( ?, ?, ?, ? )",
+
+  NULL };
+
+const char* const sqlstmts_sqlite_default_[] = {
+  "SELECT id, name FROM policy ORDER BY name",
+
+  "SELECT id, revision, name, policy, policy, parent, parent FROM zone ORDER BY name",
 
   NULL };
 
@@ -98,6 +113,7 @@ const char* const* sqlstmts_sqlite_array[] = {
   sqlstmts_sqlite_update_policy_,
   sqlstmts_sqlite_qschema1_,
   sqlstmts_sqlite_qschema2_,
+  sqlstmts_sqlite_default_,
   sqlstmts_sqlite_update_zone_,
   sqlstmts_sqlite_fetchall_,
   sqlstmts_sqlite_schema_,
@@ -110,7 +126,8 @@ const char* const** sqlstmts_sqlite_qschema = &sqlstmts_sqlite_array[1];
 const char* const** sqlstmts_sqlite_update_policy = &sqlstmts_sqlite_array[2];
 const char* const** sqlstmts_sqlite_qschema1 = &sqlstmts_sqlite_array[3];
 const char* const** sqlstmts_sqlite_qschema2 = &sqlstmts_sqlite_array[4];
-const char* const** sqlstmts_sqlite_update_zone = &sqlstmts_sqlite_array[5];
-const char* const** sqlstmts_sqlite_fetchall = &sqlstmts_sqlite_array[6];
-const char* const** sqlstmts_sqlite_schema = &sqlstmts_sqlite_array[7];
-const char* const** sqlstmts_sqlite_schema1 = &sqlstmts_sqlite_array[8];
+const char* const** sqlstmts_sqlite_default = &sqlstmts_sqlite_array[5];
+const char* const** sqlstmts_sqlite_update_zone = &sqlstmts_sqlite_array[6];
+const char* const** sqlstmts_sqlite_fetchall = &sqlstmts_sqlite_array[7];
+const char* const** sqlstmts_sqlite_schema = &sqlstmts_sqlite_array[8];
+const char* const** sqlstmts_sqlite_schema1 = &sqlstmts_sqlite_array[9];
