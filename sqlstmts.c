@@ -320,7 +320,7 @@ assignbackreference(dbsimple_session_type session, struct dbsimple_definition* d
     target = targetobject->data;
     if(target) {
         refarraycount = (int*)&(target[field->countoffset]);
-        refarray = (void***)&(target[field->arrayoffset]);
+        refarray = (void***)&(target[field->fieldoffset]);
         *refarray = realloc(*refarray, sizeof (void*) * (1+ *refarraycount));
         (*refarray)[*refarraycount] = object->data;
         *refarraycount += 1;
@@ -357,8 +357,8 @@ fetchobject(dbsimple_session_type session, struct dbsimple_definition* def, sqli
                             } else if(i==1 && (def->flags & dbsimple_FLAG_HASREVISION)) {
                                 object->revision = intvalue;
                             }
-                            if(def->fields[i].offset >= 0)
-                                *(int*)&(object->data[def->fields[i].offset]) = intvalue;
+                            if(def->fields[i].fieldoffset >= 0)
+                                *(int*)&(object->data[def->fields[i].fieldoffset]) = intvalue;
                             break;
                         case dbsimple_STRING:
                             cstrvalue = strdup((char*)sqlite3_column_text(stmt, column++));
@@ -366,8 +366,8 @@ fetchobject(dbsimple_session_type session, struct dbsimple_definition* def, sqli
                                 object = getorcreate(session, def, 0, cstrvalue);
                                 object->state = OBJCLEAN;
                             }
-                            if(def->fields[i].offset >= 0)
-                                *(char**)&(object->data[def->fields[i].offset]) = cstrvalue;
+                            if(def->fields[i].fieldoffset >= 0)
+                                *(char**)&(object->data[def->fields[i].fieldoffset]) = cstrvalue;
                             break;
                         case dbsimple_REFERENCE:
                             targetkeyid = 0;
@@ -386,11 +386,10 @@ fetchobject(dbsimple_session_type session, struct dbsimple_definition* def, sqli
                                     }
                                 } else
                                     abort();
-                                if(def->fields[i].offset >= 0)
-                                    assignreference(session, def->fields[i].def, targetkeyid, targetkeystr, (void**)&(object->data[def->fields[i].offset]));
+                                assignreference(session, def->fields[i].def, targetkeyid, targetkeystr, (void**)&(object->data[def->fields[i].fieldoffset]));
                             } else {
                                 ++column;
-                                *(void**)&(object->data[def->fields[i].offset]) = NULL;
+                                *(void**)&(object->data[def->fields[i].fieldoffset]) = NULL;
                             }
                             break;
                         case dbsimple_BACKREFERENCE:
@@ -416,7 +415,8 @@ fetchobject(dbsimple_session_type session, struct dbsimple_definition* def, sqli
                                 assignbackreference(session, def->fields[i].def, targetkeyid, targetkeystr, &def->fields[i], object);
                             }
                             break;
-                        case dbsimple_FUTUREREFERENCE:
+                        case dbsimple_MASTERREFERENCES:
+                        case dbsimple_OPENREFERENCES:
                             break;
                     }
                 }
@@ -572,7 +572,7 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
                         /* else deliberate fall through */
                         // fall through
                     default:
-                        intvalue = *(int*)&(object->data[field->offset]);
+                        intvalue = *(int*)&(object->data[field->fieldoffset]);
                 }
                 sqlite3_bind_int(stmt, ++column, intvalue);
                 break;
@@ -582,21 +582,27 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
                         cstrvalue = object->keyname;
                         break;
                     default:
-                        cstrvalue = *(char**)&(object->data[field->offset]);
+                        cstrvalue = *(char**)&(object->data[field->fieldoffset]);
                 }
                 sqlite3_bind_text(stmt, ++column, cstrvalue, -1, SQLITE_STATIC);
                 break;
             case dbsimple_REFERENCE:
-                targetptr = *(void**)&(object->data[field->offset]);
+                targetptr = *(void**)&(object->data[field->fieldoffset]);
                 if(targetptr != NULL) {
                     targetobj = referencebyptr(session, field->def, targetptr);
-                    intvalue = targetobj->keyid;
-                    sqlite3_bind_int(stmt, ++column, intvalue);
+                    if(targetobj->keyname) {
+                        cstrvalue = targetobj->keyname;
+                        sqlite3_bind_text(stmt, ++column, cstrvalue, -1, SQLITE_STATIC);
+                    } else {
+                        intvalue = targetobj->keyid;
+                        sqlite3_bind_int(stmt, ++column, intvalue);
+                    }
                 } else
                     sqlite3_bind_null(stmt, ++column);
                 break;
             case dbsimple_BACKREFERENCE:
-            case dbsimple_FUTUREREFERENCE:
+            case dbsimple_MASTERREFERENCES:
+            case dbsimple_OPENREFERENCES:
                 break;
         }
     }
@@ -687,7 +693,7 @@ committraverse(dbsimple_session_type session, struct object* object)
             case dbsimple_STRING:
                 break;
             case dbsimple_REFERENCE:
-                targetptr = *(void**)&(object->data[object->type->fields[i].offset]);
+                targetptr = *(void**)&(object->data[object->type->fields[i].fieldoffset]);
                 if(targetptr) {
                     targetobj = referencebyptr(session, object->type->fields[i].def, targetptr);
                     if(targetobj->type == NULL)
@@ -697,9 +703,9 @@ committraverse(dbsimple_session_type session, struct object* object)
                 break;
             case dbsimple_BACKREFERENCE:
                 break;
-            case dbsimple_FUTUREREFERENCE:
+            case dbsimple_MASTERREFERENCES:
                 refarraycount = (int*)&(object->data[object->type->fields[i].countoffset]);
-                refarray = (void***)&(object->data[object->type->fields[i].arrayoffset]);
+                refarray = (void***)&(object->data[object->type->fields[i].fieldoffset]);
                 for(int j=0; j<*refarraycount; j++) {
                     targetptr = (*refarray)[j];
                     if(targetptr) {
@@ -710,6 +716,8 @@ committraverse(dbsimple_session_type session, struct object* object)
                     }
                 }
                 break;
+            case dbsimple_OPENREFERENCES:
+                break;
             default:
                 abort();
         }
@@ -717,7 +725,7 @@ committraverse(dbsimple_session_type session, struct object* object)
 }
 
 static int
-deleteobject(struct object* object, dbsimple_session_type session)
+deleteobject(struct object* object, __attribute__((unused)) dbsimple_session_type session)
 {
     void*** refarray;
     if(object->data) {
@@ -728,8 +736,9 @@ deleteobject(struct object* object, dbsimple_session_type session)
                 case dbsimple_REFERENCE:
                 case dbsimple_BACKREFERENCE:
                     break;
-                case dbsimple_FUTUREREFERENCE:
-                    refarray = (void***) &(object->data[object->type->fields[i].arrayoffset]);
+                case dbsimple_MASTERREFERENCES:
+                case dbsimple_OPENREFERENCES:
+                    refarray = (void***) &(object->data[object->type->fields[i].fieldoffset]);
                     free(*refarray);
                     break;
                 default:
@@ -757,7 +766,7 @@ dbsimple_commit(dbsimple_session_type session)
     eatResult(session->handle, session->beginStmt, NULL);
     
     tree_foreach(session->pointermap, (tree_visitor_type) commitobject, (void*) session);
-    tree_foreach(session->objectmap, deleteobject, NULL);
+    tree_foreach(session->objectmap, (tree_visitor_type) deleteobject, (void*) session);
     tree_destroy(session->objectmap);
     tree_destroy(session->pointermap);
 
@@ -954,23 +963,25 @@ struct dbsimple_definition datadefinition;
 struct dbsimple_definition policydefinition;
 struct dbsimple_definition zonedefinition;
 struct dbsimple_field datafields[] = {
-    { dbsimple_FUTUREREFERENCE, -1, &policydefinition, offsetof(struct data, npolicies), offsetof(struct data, policies) },
-    { dbsimple_FUTUREREFERENCE, -1, &zonedefinition,   offsetof(struct data, nzones), offsetof(struct data, zones) }
+    { dbsimple_MASTERREFERENCES, &policydefinition, offsetof(struct data, policies), offsetof(struct data, npolicies) },
+    { dbsimple_MASTERREFERENCES, &zonedefinition,   offsetof(struct data, zones),    offsetof(struct data, nzones) }
 };
 struct dbsimple_field policyfields[] = {
-    { dbsimple_INTEGER,       -1,                            NULL, 0, 0 },
-    { dbsimple_STRING,        offsetof(struct policy, name), NULL, 0, 0 },
-    { dbsimple_BACKREFERENCE, -1,                            &datadefinition,   offsetof(struct data, npolicies), offsetof(struct data, policies) }
+    { dbsimple_INTEGER,        NULL,                 -1,                              -1 },
+    { dbsimple_STRING,         NULL,                 offsetof(struct policy, name),   -1 },
+    { dbsimple_OPENREFERENCES, &zonedefinition,      offsetof(struct policy, zones),  -1 },
+    { dbsimple_BACKREFERENCE,  &datadefinition,      offsetof(struct data, policies), offsetof(struct data, npolicies) }
 };
 struct dbsimple_field zonefields[] = {
-    { dbsimple_INTEGER,       -1,                            NULL, 0, 0 },
-    { dbsimple_INTEGER,       -1,                            NULL, 0, 0 },
-    { dbsimple_STRING,        offsetof(struct zone, name),   NULL, 0, 0 },
-    { dbsimple_REFERENCE,     offsetof(struct zone, policy), &policydefinition, 0, 0 },
-    { dbsimple_BACKREFERENCE, -1,                            &policydefinition, offsetof(struct policy, nzones), offsetof(struct policy, zones) },
-    { dbsimple_REFERENCE,     offsetof(struct zone, parent), &zonedefinition,   0, 0 },
-    { dbsimple_BACKREFERENCE, -1,                            &zonedefinition,   offsetof(struct zone, nsubzones), offsetof(struct zone, subzones) },
-    { dbsimple_BACKREFERENCE, -1,                            &datadefinition,   offsetof(struct data, nzones), offsetof(struct data, zones) }
+    { dbsimple_INTEGER,        NULL,                 -1,                              -1 },
+    { dbsimple_INTEGER,        NULL,                 -1,                              -1 },
+    { dbsimple_STRING,         NULL,                 offsetof(struct zone, name),     -1 },
+    { dbsimple_REFERENCE,      &policydefinition,    offsetof(struct zone, policy),   -1 },
+    { dbsimple_BACKREFERENCE,  &policydefinition,    offsetof(struct policy, zones),  offsetof(struct policy, nzones) },
+    { dbsimple_REFERENCE,      &zonedefinition,      offsetof(struct zone, parent),   -1 },
+    { dbsimple_BACKREFERENCE,  &zonedefinition,      offsetof(struct zone, subzones), offsetof(struct zone, nsubzones) },
+    { dbsimple_OPENREFERENCES, &zonedefinition,      offsetof(struct zone, subzones), offsetof(struct zone, nsubzones) },
+    { dbsimple_BACKREFERENCE,  &datadefinition,      offsetof(struct data, zones),    offsetof(struct data, nzones) }
 };
 struct dbsimple_definition datadefinition =   { sizeof(struct data),   dbsimple_FLAG_SINGLETON,   sizeof(datafields)/sizeof(struct dbsimple_field), datafields,    NULL };
 struct dbsimple_definition policydefinition = { sizeof(struct policy), 0,                         sizeof(policyfields)/sizeof(struct dbsimple_field), policyfields, NULL };
