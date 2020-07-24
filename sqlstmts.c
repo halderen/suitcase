@@ -201,6 +201,12 @@ static int eatResult(sqlite3* handle, sqlite3_stmt* stmt, void* data)
 
 enum objectstate { OBJUNKNOWN=0, OBJNEW, OBJCLEAN, OBJREMOVED, OBJMODIFIED };
 
+struct backpatch {
+    struct object* source;
+    struct dbsimple_field* field;
+    struct backpatch* next;
+};
+
 struct object {
     struct dbsimple_definition* type;
     char* data;
@@ -209,6 +215,7 @@ struct object {
     int revision;
     enum objectstate state;
     struct object* next;
+    struct backpatch* backpatches;
 };
 
 static int
@@ -272,6 +279,7 @@ getorcreate(dbsimple_session_type session, struct dbsimple_definition* def, int 
         object->keyname = NULL;
         object->revision = -1;
         object->next = NULL;
+        object->backpatches = NULL;
         tree_insertref(session->objectmap, object, &cursor);
         tree_insert(session->pointermap, object);
     }
@@ -292,20 +300,32 @@ referencebyptr(dbsimple_session_type session, struct dbsimple_definition* def, v
         object->state = OBJNEW;
         object->revision = 0;
         object->next = NULL;
+        object->backpatches = NULL;
         tree_insert(session->pointermap, object);
     }
     return object;
 }
 
-static inline void
-assignreference(dbsimple_session_type session, struct dbsimple_definition* def, int id, const char* name, void** destination)
+static void
+subscribereference(struct dbsimple_field* field, struct object* source, struct object* subject)
 {
-    struct object* object;
-    object = getorcreate(session, def, id, name);
-    if(object) {
-        *destination = object->data;
+    struct backpatch* patch = malloc(sizeof(struct backpatch));
+    patch->source = source;
+    patch->field = field;
+    patch->next = source->backpatches;
+    subject->backpatches = patch;
+}
+
+static inline void
+assignreference(dbsimple_session_type session, struct dbsimple_field* field, int id, const char* name, struct object* source)
+{
+    struct object* targetoject;
+    void** destination = (void**)&(source->data[field->fieldoffset]);
+    targetoject = getorcreate(session, field->def, id, name);
+    if(targetoject->data) {
+        *destination = targetoject->data;
     } else {
-        // BERRY FIXME backpatch subscription
+        subscribereference(field, source, targetoject);
     }
 }
 
@@ -325,7 +345,36 @@ assignbackreference(dbsimple_session_type session, struct dbsimple_definition* d
         (*refarray)[*refarraycount] = object->data;
         *refarraycount += 1;
     } else {
-        // BERRY FIXME backpatch subscription
+        subscribereference(field, object, targetobject);
+    }
+}
+
+static inline void
+resolvebackpatches(struct object* object)
+{
+    char* target;
+    int* refarraycount;
+    void*** refarray;
+    while(object->backpatches) {
+        struct backpatch* patch = object->backpatches;
+        switch(patch->field->type) {
+            case dbsimple_REFERENCE:
+                target = patch->source->data;
+                *(void**)&(target[patch->field->fieldoffset]) = object->data;
+                break;
+            case dbsimple_BACKREFERENCE:
+                target = object->data;
+                refarraycount = (int*)&(target[patch->field->countoffset]);
+                refarray = (void***)&(target[patch->field->fieldoffset]);
+                *refarray = realloc(*refarray, sizeof (void*) * (1+ *refarraycount));
+                (*refarray)[*refarraycount] = object->data;
+                *refarraycount += 1;
+                break;
+            default:
+                abort();
+        }
+        object->backpatches = patch->next;
+        free(patch);
     }
 }
 
@@ -386,7 +435,7 @@ fetchobject(dbsimple_session_type session, struct dbsimple_definition* def, sqli
                                     }
                                 } else
                                     abort();
-                                assignreference(session, def->fields[i].def, targetkeyid, targetkeystr, (void**)&(object->data[def->fields[i].fieldoffset]));
+                                assignreference(session, &def->fields[i], targetkeyid, targetkeystr, object);
                             } else {
                                 ++column;
                                 *(void**)&(object->data[def->fields[i].fieldoffset]) = NULL;
@@ -511,6 +560,7 @@ dbsimple_dirty(dbsimple_session_type session, void *ptr)
         object->keyname = NULL;
         object->revision = 0;
         object->next = NULL;
+        object->backpatches = NULL;
         tree_insert(session->pointermap, object);
     } else {
         object->state = OBJMODIFIED;
