@@ -1,7 +1,6 @@
 #ifndef DBSIMPLE_H
 #define DBSIMPLE_H
 
-struct dbsimple_implementation;
 struct dbsimple_connection_struct;
 typedef struct dbsimple_connection_struct* dbsimple_connection_type;
 struct dbsimple_session_struct;
@@ -45,6 +44,7 @@ int dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_t
 int dbsimple_closesession(dbsimple_session_type);
 int dbsimple_sync(dbsimple_session_type, const char* const** query, void* data);
 void* dbsimple_fetch(dbsimple_session_type, const char* const** model, ...);
+
 int dbsimple_commit(dbsimple_session_type);
 void dbsimple_dirty(dbsimple_session_type, void *ptr);
 void dbsimple_delete(dbsimple_session_type, void *ptr);

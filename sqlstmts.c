@@ -23,11 +23,11 @@ static void reportError(sqlite3* handle, char* message);
 
 #ifndef HAVE_SQLITE3_H
 
-int dbsimple_initialize(char* hint) {
+int dbsimple_sqlite3_initialize(char* hint) {
     return -1
 }
 
-int dbsimple_finalize(void) {
+int dbsimple_sqlite3_finalize(void) {
     return -1;
 }
 
@@ -82,7 +82,7 @@ int (*sqlite3_reset)(sqlite3_stmt*);
 static void* dlhandle = NULL;
 
 int
-dbsimple_initialize(char* hint)
+dbsimple_sqlite3_initialize(char* hint)
 {
     (void)hint;
     dlhandle = dlopen("libsqlite3.so.0", RTLD_LAZY);
@@ -113,7 +113,7 @@ dbsimple_initialize(char* hint)
 }
 
 int
-dbsimple_finalize(void)
+dbsimple_sqlite3_finalize(void)
 {
     sqlite3_errmsg           = NULL;
     sqlite3_errcode          = NULL;
@@ -157,12 +157,8 @@ dbsimple_finalize(void)
 #endif
 
 struct dbsimple_connection_struct {
+    struct dbsimple_connectionbase baseconnection;
     sqlite3* handle;
-    char* location;
-    int nqueries;
-    const char* const** queries;
-    int ndefinitions;
-    struct dbsimple_definition** definitions;
 };
 
 struct dbsimple_session_struct {
@@ -177,9 +173,22 @@ struct dbsimple_session_struct {
     sqlite3_stmt** currentStmts;
 };
 
+static int openconnection(char* location, __attribute__((unused)) int nqueries, __attribute__((unused)) const char* const** queries, dbsimple_connection_type* connectionPtr);
+static int closeconnection(dbsimple_connection_type connection);
+static int opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionPtr);
+static int closesession(dbsimple_session_type session);
+static int syncdata(dbsimple_session_type session, const char* const** query, void* data);
+static void* fetchdata(dbsimple_session_type session, const char* const** query, va_list args);
+static int commitdata(dbsimple_session_type session);
+
 static void errorcallback(__attribute__((unused)) void *data, __attribute__((unused)) int errorCode, __attribute__((unused)) const char *errorMessage) {
     //fprintf(stderr, "ERROR %s (%d)\n", errorMessage, errorCode);
 }
+
+static const struct dbsimple_module module = {
+    "sqlite", openconnection, closeconnection, opensession, closesession, syncdata, fetchdata, commitdata
+};
+
 
 static int initialize(void)
 {
@@ -190,6 +199,8 @@ static int initialize(void)
     sqlite3_config(SQLITE_CONFIG_SERIALIZED);
     sqlite3_config(SQLITE_CONFIG_LOG, errorcallback, NULL);
 
+    dbsimple_registermodule(&module);
+    
     return 0;
 }
 
@@ -464,20 +475,20 @@ dbsimple__persistobject(struct object* object, dbsimple_session_type session)
     return 0; /* continue */
 }
 
-int
-dbsimple_commit(dbsimple_session_type session)
+static int
+commitdata(dbsimple_session_type session)
 {
     struct object* object;
     sqlite3_reset(session->beginStmt);
     eatResult(session->handle, session->beginStmt, NULL);
 
-    for(int i=0; i<session->connection->ndefinitions; i++) {
-        if((session->connection->definitions[i]->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON) {
-            object = dbsimple__getobject(&session->basesession, session->connection->definitions[i], 0, NULL);
+    for(int i=0; i<session->connection->baseconnection.ndefinitions; i++) {
+        if((session->connection->baseconnection.definitions[i]->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON) {
+            object = dbsimple__getobject(&session->basesession, session->connection->baseconnection.definitions[i], 0, NULL);
             dbsimple__committraverse(&session->basesession, object);
         }
     }
-    dbsimple__commitprocedure(&session->basesession);
+    dbsimple__commit(&session->basesession);
 
     sqlite3_reset(session->commitStmt);
     eatResult(session->handle, session->commitStmt, NULL);
@@ -485,17 +496,14 @@ dbsimple_commit(dbsimple_session_type session)
     return 0;
 }
 
-int
-dbsimple_openconnection(char* location,
-                        int nqueries, const char* const** queries,
-                        int ndefinitions, struct dbsimple_definition** definitions,
-                        dbsimple_connection_type* connectionPtr)
+static int
+openconnection(char* location,
+               __attribute__((unused)) int nqueries, __attribute__((unused)) const char* const** queries,
+               dbsimple_connection_type* connectionPtr)
 {
     int returnCode = 0;
     int errorCode;
-    int count;
     sqlite3* handle;
-    (void)location;
     /* :memory: */
     if (SQLITE_OK != (errorCode = sqlite3_open_v2(location, &handle, SQLITE_OPEN_READWRITE|SQLITE_OPEN_URI|SQLITE_OPEN_CREATE, NULL))) {
         reportError(handle, "error opening database");
@@ -505,37 +513,21 @@ dbsimple_openconnection(char* location,
             return -1;
     }
 
-    if(nqueries < 0) {
-        for(count=0; queries[count]; count++)
-            ;
-        nqueries = count;
-    }
-    if(ndefinitions < 0) {
-        for(count=0; queries[count]; count++)
-            ;
-        ndefinitions = count;
-    }
     *connectionPtr = malloc(sizeof(struct dbsimple_connection_struct));
     (*connectionPtr)->handle    = handle;
-    (*connectionPtr)->location  = strdup(location);
-    (*connectionPtr)->nqueries     = nqueries;
-    (*connectionPtr)->queries      = queries;
-    (*connectionPtr)->ndefinitions = ndefinitions;
-    (*connectionPtr)->definitions  = definitions;
     return returnCode;
 }
 
-int
-dbsimple_closeconnection(dbsimple_connection_type connection)
+static int
+closeconnection(dbsimple_connection_type connection)
 {
     sqlite3_close(connection->handle);
-    free(connection->location);
     free(connection);
     return 0;
 }
 
-int
-dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionPtr)
+static int
+opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionPtr)
 {
     int returnCode = 0;
     int errorCode;
@@ -562,19 +554,24 @@ dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_type*
     *sessionPtr = malloc(sizeof(struct dbsimple_session_struct));
     (*sessionPtr)->connection = connection;
     (*sessionPtr)->handle = connection->handle;
-    (*sessionPtr)->nstmts = connection->nqueries;
+    (*sessionPtr)->nstmts = connection->baseconnection.nqueries;
     (*sessionPtr)->stmts = malloc(sizeof(sqlite3_stmt**) * (*sessionPtr)->nstmts);
     (*sessionPtr)->beginStmt = beginStmt;
     (*sessionPtr)->commitStmt = commitStmt;
     (*sessionPtr)->rollbackStmt = rollbackStmt;
-    for(int i=0; i<connection->nqueries; i++) {
+    for(int i=0; i<connection->baseconnection.nqueries; i++) {
         (*sessionPtr)->stmts[i] = NULL;
     }
+
+    (*sessionPtr)->basesession.closesession = closesession;
+    (*sessionPtr)->basesession.syncdata  = syncdata;
+    (*sessionPtr)->basesession.fetchdata = fetchdata;
+    (*sessionPtr)->basesession.commitdata = commitdata;
     return returnCode;
 }
 
-int
-dbsimple_closesession(dbsimple_session_type session)
+static int
+closesession(dbsimple_session_type session)
 {
     sqlite3_stmt** stmts;
     for(int i=0; i<session->nstmts; i++) {
@@ -592,14 +589,14 @@ dbsimple_closesession(dbsimple_session_type session)
     return 0;
 }
 
-int
-dbsimple_sync(dbsimple_session_type session, const char* const** query,  void* data)
+static int
+syncdata(dbsimple_session_type session, const char* const** query, void* data)
 {
     sqlite3_stmt** stmts = NULL;
     int stmtindex;
     int errorCode;
     char* errorMessage;
-    stmtindex = query - session->connection->queries;
+    stmtindex = query - session->connection->baseconnection.queries;
     if(stmtindex >= 0 && stmtindex < session->nstmts) {
         stmts = session->stmts[stmtindex];
         if(stmts == NULL) {
@@ -640,13 +637,13 @@ dbsimple_sync(dbsimple_session_type session, const char* const** query,  void* d
     return 0;
 }
 
-void*
-dbsimple_fetch(dbsimple_session_type session, const char* const** query, ...)
+static void*
+fetchdata(dbsimple_session_type session, const char* const** query, __attribute__((unused))  va_list args)
 {
     sqlite3_stmt** stmts = NULL;
     int stmtindex;
     int errorCode;
-    stmtindex = query - session->connection->queries;
+    stmtindex = query - session->connection->baseconnection.queries;
     if(stmtindex >=0 && stmtindex < session->nstmts) {
         stmts = session->stmts[stmtindex];
         if(stmts == NULL) {
@@ -666,12 +663,12 @@ dbsimple_fetch(dbsimple_session_type session, const char* const** query, ...)
             }
             stmts[count] = NULL;
         }
-        for(int i=stmtindex=0; i<session->connection->ndefinitions; i++)
-            if((session->connection->definitions[i]->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
-                session->connection->definitions[i]->implementation = stmtindex++;
+        for(int i=stmtindex=0; i<session->connection->baseconnection.ndefinitions; i++)
+            if((session->connection->baseconnection.definitions[i]->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
+                session->connection->baseconnection.definitions[i]->implementation = stmtindex++;
             }
         session->currentStmts = stmts;
-        return dbsimple__fetch(&session->basesession, session->connection->ndefinitions, session->connection->definitions);
+        return dbsimple__fetch(&session->basesession, session->connection->baseconnection.ndefinitions, session->connection->baseconnection.definitions);
     } else {
         return NULL;
     }

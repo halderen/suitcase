@@ -279,7 +279,7 @@ commitobject(struct object* object, struct dbsimple_sessionbase* session)
 }
 
 void
-dbsimple__commitprocedure(struct dbsimple_sessionbase* session)
+dbsimple__commit(struct dbsimple_sessionbase* session)
 {
     tree_foreach(session->pointermap, (tree_visitor_type) commitobject, (void*) session);
     tree_foreach(session->objectmap, (tree_visitor_type) deleteobject, (void*) session);
