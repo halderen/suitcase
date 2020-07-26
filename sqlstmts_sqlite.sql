@@ -69,20 +69,15 @@ UPDATE properties SET propertyValue = 4 WHERE propertyName = 'version';
 -- qschema2
 SELECT count(propertyName) FROM properties WHERE propertyName='version' AND propertyValue >= 4;
 
--- fetchall
-SELECT id, name FROM policy ORDER BY name;
-
-SELECT id, name, policy, parent FROM zone ORDER BY name;
-
--- update-policy
-UPDATE policy SET name = ? WHERE id = ?
-
--- update-zone
-DELETE FROM zone WHERE id = ? AND revision = ?;
-
-INSERT INTO zone ( id, revision, name, policy ) VALUES ( ?, ?, ?, ? );
-
 -- default
 SELECT id, name FROM policy ORDER BY name;
 
+UPDATE policy SET name = ? WHERE id = ?;
+
+DELETE FROM policy WHERE id = ?;
+
 SELECT id, revision, name, policy, policy, parent, parent FROM zone ORDER BY name;
+
+INSERT INTO zone ( id, revision, name, policy ) VALUES ( ?, ?, ?, ? );
+
+DELETE FROM zone WHERE id = ? AND revision = ?;

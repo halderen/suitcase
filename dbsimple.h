@@ -31,7 +31,7 @@ struct dbsimple_definition {
     int flags;
     int nfields;
     struct dbsimple_field* fields;
-    struct dbsimple_implementation* implementation;
+    int implementation;
 };
 
 int dbsimple_initialize(char* hint);

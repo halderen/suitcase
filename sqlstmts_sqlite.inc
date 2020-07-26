@@ -81,41 +81,27 @@ const char* const sqlstmts_sqlite_qschema2_[] = {
 
   NULL };
 
-const char* const sqlstmts_sqlite_fetchall_[] = {
-  "SELECT id, name FROM policy ORDER BY name",
-
-  "SELECT id, name, policy, parent FROM zone ORDER BY name",
-
-  NULL };
-
-const char* const sqlstmts_sqlite_update_policy_[] = {
-  "UPDATE policy SET name = ? WHERE id = ?\n",
-
-  NULL };
-
-const char* const sqlstmts_sqlite_update_zone_[] = {
-  "DELETE FROM zone WHERE id = ? AND revision = ?",
-
-  "INSERT INTO zone ( id, revision, name, policy ) VALUES ( ?, ?, ?, ? )",
-
-  NULL };
-
 const char* const sqlstmts_sqlite_default_[] = {
   "SELECT id, name FROM policy ORDER BY name",
 
+  "UPDATE policy SET name = ? WHERE id = ?",
+
+  "DELETE FROM policy WHERE id = ?",
+
   "SELECT id, revision, name, policy, policy, parent, parent FROM zone ORDER BY name",
+
+  "INSERT INTO zone ( id, revision, name, policy ) VALUES ( ?, ?, ?, ? )",
+
+  "DELETE FROM zone WHERE id = ? AND revision = ?",
 
   NULL };
 
 const char* const* sqlstmts_sqlite_array[] = {
   sqlstmts_sqlite_schema2_,
   sqlstmts_sqlite_qschema_,
-  sqlstmts_sqlite_update_policy_,
   sqlstmts_sqlite_qschema1_,
   sqlstmts_sqlite_qschema2_,
   sqlstmts_sqlite_default_,
-  sqlstmts_sqlite_update_zone_,
-  sqlstmts_sqlite_fetchall_,
   sqlstmts_sqlite_schema_,
   sqlstmts_sqlite_schema1_,
   NULL 
@@ -123,11 +109,8 @@ const char* const* sqlstmts_sqlite_array[] = {
 
 const char* const** sqlstmts_sqlite_schema2 = &sqlstmts_sqlite_array[0];
 const char* const** sqlstmts_sqlite_qschema = &sqlstmts_sqlite_array[1];
-const char* const** sqlstmts_sqlite_update_policy = &sqlstmts_sqlite_array[2];
-const char* const** sqlstmts_sqlite_qschema1 = &sqlstmts_sqlite_array[3];
-const char* const** sqlstmts_sqlite_qschema2 = &sqlstmts_sqlite_array[4];
-const char* const** sqlstmts_sqlite_default = &sqlstmts_sqlite_array[5];
-const char* const** sqlstmts_sqlite_update_zone = &sqlstmts_sqlite_array[6];
-const char* const** sqlstmts_sqlite_fetchall = &sqlstmts_sqlite_array[7];
-const char* const** sqlstmts_sqlite_schema = &sqlstmts_sqlite_array[8];
-const char* const** sqlstmts_sqlite_schema1 = &sqlstmts_sqlite_array[9];
+const char* const** sqlstmts_sqlite_qschema1 = &sqlstmts_sqlite_array[2];
+const char* const** sqlstmts_sqlite_qschema2 = &sqlstmts_sqlite_array[3];
+const char* const** sqlstmts_sqlite_default = &sqlstmts_sqlite_array[4];
+const char* const** sqlstmts_sqlite_schema = &sqlstmts_sqlite_array[5];
+const char* const** sqlstmts_sqlite_schema1 = &sqlstmts_sqlite_array[6];
