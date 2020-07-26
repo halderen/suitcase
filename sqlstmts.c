@@ -1,8 +1,5 @@
 #include "config.h"
 
-#define HAVE_SQLITE3
-#undef DYNAMIC_SQLITE3
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -38,25 +35,49 @@ int dbsimple_finalize(void) {
 
 #if !defined(HAVE_SQLITE3) || defined(DYNAMIC_SQLITE3)
 
-#define sqlite3_errmsg      dynamicsqlite3_errmsg
-#define sqlite3_errcode     dynamicsqlite3_errcode
-#define sqlite3_open_v2     dynamicsqlite3_open_v2
-#define sqlite3_close       dynamicsqlite3_close
-#define sqlite3_free        dynamicsqlite3_free
-#define sqlite3_threadsafe  dynamicsqlite3_threadsafe
-#define sqlite3_config      dynamicsqlite3_config
-#define sqlite3_step        dynamicsqlite3_step
-#define sqlite3_column_int  dynamicsqlite3_column_int
+#define sqlite3_errmsg           dynamicsqlite3_errmsg
+#define sqlite3_errcode          dynamicsqlite3_errcode
+#define sqlite3_open_v2          dynamicsqlite3_open_v2
+#define sqlite3_close            dynamicsqlite3_close
+#define sqlite3_free             dynamicsqlite3_free
+#define sqlite3_threadsafe       dynamicsqlite3_threadsafe
+#define sqlite3_config           dynamicsqlite3_config
+#define sqlite3_step             dynamicsqlite3_step
+#define sqlite3_column_int       dynamicsqlite3_column_int
+#define sqlite3_column_text      dynamicsqlite3_column_text
+#define sqlite3_column_type      dynamicsqlite3_column_type
+#define sqlite3_bind_int         dynamicsqlite3_bind_int
+#define sqlite3_bind_null        dynamicsqlite3_bind_null
+#define sqlite3_bind_text        dynamicsqlite3_bind_text
+#define sqlite3_changes          dynamicsqlite3_changes
+#define sqlite3_clear_bindings   dynamicsqlite3_clear_bindings
+#define sqlite3_exec             dynamicsqlite3_exec
+#define sqlite3_extended_errcode dynamicsqlite3_extended_errcode
+#define sqlite3_finalize         dynamicsqlite3_finalize
+#define sqlite3_prepare_v2       dynamicsqlite3_prepare_v2
+#define sqlite3_reset            dynamicsqlite3_reset
 
 const char* (*sqlite3_errmsg)(sqlite3*);
 int (*sqlite3_errcode)(sqlite3*);
-int (*sqlite3_open_v2)(const char *filename, sqlite3 **ppDb, int, consth char*);
+int (*sqlite3_open_v2)(const char*, sqlite3**, int, const char*);
 int (*sqlite3_close)(sqlite3*);
 void (*sqlite3_free)(void*);
 int (*sqlite3_threadsafe)(void);
 int (*sqlite3_config)(int, ...);
 int (*sqlite3_step)(sqlite3_stmt*);
-int (*sqlite3_column_int)(sqlite3_stmt*, int iCol);
+int (*sqlite3_column_int)(sqlite3_stmt*, int);
+char* (*sqlite3_column_text)(sqlite3_stmt*, int);
+int (*sqlite3_column_type)(sqlite3_stmt*, int);
+int (*sqlite3_bind_int)(sqlite3_stmt*, int, int);
+int (*sqlite3_bind_null)(sqlite3_stmt*, int);
+int (*sqlite3_bind_text)(sqlite3_stmt*,int,const char*,int,void(*)(void*));
+int (*sqlite3_changes)(sqlite3*);
+int (*sqlite3_clear_bindings)(sqlite3_stmt*);
+int (*sqlite3_exec)(sqlite3*,const char*,int(*)(void*,int,char**,char**),void*,char**);
+int (*sqlite3_extended_errcode)(sqlite3*);
+int (*sqlite3_finalize)(sqlite3_stmt*);
+int (*sqlite3_prepare_v2)(sqlite3*,const char*,int,sqlite3_stmt**,const char**);
+int (*sqlite3_reset)(sqlite3_stmt*);
 
 static void* dlhandle = NULL;
 
@@ -65,30 +86,56 @@ dbsimple_initialize(char* hint)
 {
     (void)hint;
     dlhandle = dlopen("libsqlite3.so.0", RTLD_LAZY);
-    sqlite3_errmsg     = (const char* (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_errmsg"));
-    sqlite3_errcode    = (int (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_errcode"));
-    sqlite3_open_v2    = (int(*)(const char *, sqlite3 **, int, const char*))functioncast(dlsym(dlhandle, "sqlite3_open_v2"));
-    sqlite3_close      = (int (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_close"));
-    sqlite3_free       = (void (*)(void*))functioncast(dlsym(dlhandle, "sqlite3_free"));
-    sqlite3_threadsafe = (int (*)())functioncast(dlsym(dlhandle, "sqlite3_threadsafe"));
-    sqlite3_config     = (int (*)(int,...))functioncast(dlsym(dlhandle, "sqlite3_config"));
-    sqlite3_step       = (int (*)(int,...))functioncast(dlsym(dlhandle, "sqlite3_step"));
-    sqlite3_column_int = (int (*)(int,...))functioncast(dlsym(dlhandle, "sqlite3_column_int"));
+    sqlite3_errmsg           = (const char* (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_errmsg"));
+    sqlite3_errcode          = (int (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_errcode"));
+    sqlite3_open_v2          = (int(*)(const char *, sqlite3 **, int, const char*))functioncast(dlsym(dlhandle, "sqlite3_open_v2"));
+    sqlite3_close            = (int (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_close"));
+    sqlite3_free             = (void (*)(void*))functioncast(dlsym(dlhandle, "sqlite3_free"));
+    sqlite3_threadsafe       = (int (*)())functioncast(dlsym(dlhandle, "sqlite3_threadsafe"));
+    sqlite3_config           = (int (*)(int,...))functioncast(dlsym(dlhandle, "sqlite3_config"));
+    sqlite3_step             = (int (*)(sqlite3_stmt*))functioncast(dlsym(dlhandle, "sqlite3_step"));
+    sqlite3_column_int       = (int (*)(sqlite3_stmt*,int))functioncast(dlsym(dlhandle, "sqlite3_column_int"));
+    sqlite3_column_text      = (char* (*)(sqlite3_stmt*,int))functioncast(dlsym(dlhandle, "sqlite3_column_text"));
+
+    sqlite3_column_type      = (int (*)(sqlite3_stmt*, int))functioncast(dlsym(dlhandle, "sqlite3_column_type"));
+    sqlite3_bind_int         = (int (*)(sqlite3_stmt*, int, int))functioncast(dlsym(dlhandle, "sqlite3_bind_int"));
+    sqlite3_bind_null        = (int (*)(sqlite3_stmt*, int))functioncast(dlsym(dlhandle, "sqlite3_bind_null"));
+    sqlite3_bind_text        = (int (*)(sqlite3_stmt*,int,const char*,int,void(*)(void*)))functioncast(dlsym(dlhandle, "sqlite3_bind_text"));
+    sqlite3_changes          = (int (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_changes"));
+    sqlite3_clear_bindings   = (int (*)(sqlite3_stmt*))functioncast(dlsym(dlhandle, "sqlite3_clear_bindings"));
+    sqlite3_exec             = (int (*)(sqlite3*,const char*,int(*)(void*,int,char**,char**),void*,char**))functioncast(dlsym(dlhandle, "sqlite3_exec"));
+    sqlite3_extended_errcode = (int (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_extended_errcode"));
+
+    sqlite3_finalize         = (int (*)(sqlite3_stmt*))functioncast(dlsym(dlhandle, "sqlite3_finalize"));
+    sqlite3_prepare_v2       = (int (*)(sqlite3*,const char*,int,sqlite3_stmt**,const char**))functioncast(dlsym(dlhandle, "sqlite3_prepare_v2"));
+    sqlite3_reset            = (int (*)(sqlite3_stmt*))functioncast(dlsym(dlhandle, "sqlite3_reset"));
     return initialize();
 }
 
 int
 dbsimple_finalize(void)
 {
-    sqlite3_errmsg     = NULL;
-    sqlite3_errcode    = NULL;
-    sqlite3_open_v2    = NULL;
-    sqlite3_close      = NULL;
-    sqlite3_free       = NULL;
-    sqlite3_threadsafe = NULL;
-    sqlite3_config     = NULL;
-    sqlite3_step       = NULL;
-    sqlite3_column_int = NULL;
+    sqlite3_errmsg           = NULL;
+    sqlite3_errcode          = NULL;
+    sqlite3_open_v2          = NULL;
+    sqlite3_close            = NULL;
+    sqlite3_free             = NULL;
+    sqlite3_threadsafe       = NULL;
+    sqlite3_config           = NULL;
+    sqlite3_step             = NULL;
+    sqlite3_column_int       = NULL;
+    sqlite3_column_text      = NULL;
+    sqlite3_column_type      = NULL;
+    sqlite3_bind_int         = NULL;
+    sqlite3_bind_null        = NULL;
+    sqlite3_bind_text        = NULL;
+    sqlite3_changes          = NULL;
+    sqlite3_clear_bindings   = NULL;
+    sqlite3_exec             = NULL;
+    sqlite3_extended_errcode = NULL;
+    sqlite3_finalize         = NULL;
+    sqlite3_prepare_v2       = NULL;
+    sqlite3_reset            = NULL;
     dlclose(dlhandle);
     return 0;
 }
@@ -448,7 +495,6 @@ dbsimple_openconnection(char* location,
     int errorCode;
     int count;
     sqlite3* handle;
-    //const char* query;
     (void)location;
     /* :memory: */
     if (SQLITE_OK != (errorCode = sqlite3_open_v2(location, &handle, SQLITE_OPEN_READWRITE|SQLITE_OPEN_URI|SQLITE_OPEN_CREATE, NULL))) {
