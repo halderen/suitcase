@@ -16,7 +16,6 @@ ACX_STRICT
 dnl CHECK_COMPILER_FLAG(std=c99, [C99FLAG="-std=c99"])
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h string.h])
-AC_CHECK_HEADERS([sqlite3.h])
 AC_CHECK_FUNCS([strrchr])
 AC_C_CONST
 AC_TYPE_SIZE_T
@@ -26,14 +25,13 @@ ACX_DLOPEN
 AX_PTHREAD
 AX_C___ATTRIBUTE__
 
-ACX_CUNIT
-AM_CONDITIONAL([WITH_CUNIT], [test "${with_cunit}" != "no" -a -n "$CUNIT_LIBS"])
 AX_LIB_SQLITE3
 AX_LIB_MYSQL
-
 ACX_LIBMICROHTTPD
 ACX_LIBJANSSON
 ACX_LIBYAML
+ACX_CUNIT
+AM_CONDITIONAL([WITH_CUNIT], [test "${with_cunit}" != "no" -a -n "$CUNIT_LIBS"])
 LIBCURL_CHECK_CONFIG
 
 # doxygen
@@ -43,15 +41,18 @@ DX_INIT_DOXYGEN(${PACKAGE_NAME}, [Doxyfile], [doxygen])
 
 AC_CHECK_LIB(pthread, pthread_barrier_wait, [AC_DEFINE([HAVE_PTHREAD_BARRIER], [1], [Define if pthread barrier supported])])
 
-AC_CHECK_FUNC(backtrace, [AC_DEFINE([HAVE_BACKTRACE], [1], [Define if backtrace
-supported])])
-AC_CHECK_LIB(backtrace, backtrace_full, [AC_DEFINE([HAVE_BACKTRACE_FULL], [1], [
-Define if backtrace_full supported]) LIBS="$LIBS -lbacktrace"])
+AC_CHECK_FUNC(backtrace, [AC_DEFINE([HAVE_BACKTRACE], [1], [Define if backtrace supported])])
+AC_CHECK_LIB(backtrace, backtrace_full, [AC_DEFINE([HAVE_BACKTRACE_FULL], [1], [Define if backtrace_full supported]) LIBS="$LIBS -lbacktrace"])
 
 AM_CONDITIONAL([HAVE_MYSQL],[grep HAVE_MYSQL confdefs.h > /dev/null])
 AM_CONDITIONAL([HAVE_SQLITE3],[grep HAVE_SQLITE3 confdefs.h > /dev/null])
 DYNAMIC_SQLITE3
 DYNAMIC_MYSQL
+AM_CONDITIONAL([INCLUDE_SQLITE3], [grep -E "HAVE_SQLITE3 |DO_DYNAMIC_SQLITE3" confdefs.h > /dev/null])
+AM_CONDITIONAL([INCLUDE_MYSQL], [grep -E "HAVE_MYSQL |DO_DYNAMIC_MYSQL" confdefs.h > /dev/null])
+dnl These checks must be after probing path for them
+AC_CHECK_HEADERS([sqlite3.h])
+AC_CHECK_HEADERS([mysql.h])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

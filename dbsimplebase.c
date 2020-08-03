@@ -275,7 +275,7 @@ commitobject(struct object* object, struct dbsimple_sessionbase* session)
                 abort();
         }
     }
-    return dbsimple__persistobject(object, (dbsimple_session_type)session);
+    return session->persistobject(object, (dbsimple_session_type)session);
 }
 
 void
@@ -338,7 +338,7 @@ dbsimple__fetch(struct dbsimple_sessionbase* session, int ndefinitions, struct d
             object = dbsimple__getobject(session, definitions[i], 0, NULL);
             object->state = OBJCLEAN;
         } else {
-            dbsimple__fetchobject(definitions[i], (dbsimple_session_type)session);
+            session->fetchobject(definitions[i], (dbsimple_session_type)session);
         }
     }
     tree_foreach(session->objectmap, (tree_visitor_type) resolvebackpatches, NULL);

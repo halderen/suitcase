@@ -10,7 +10,7 @@
 #include <dlfcn.h>
 #endif
 #ifdef HAVE_SQLITE3_H
-#include "sqlite3.h"
+#include <sqlite3.h>
 #endif
 
 #include "utilities.h"
@@ -143,13 +143,13 @@ dbsimple_sqlite3_finalize(void)
 #else
 
 int
-dbsimple_initialize(__attribute__((unused)) char* hint)
+dbsimple_sqlite3_initialize(__attribute__((unused)) char* hint)
 {
     return initialize();
 }
 
 int
-dbsimple_finalize(void)
+dbsimple_sqlite3_finalize(void)
 {
     return 0;
 }
@@ -253,8 +253,8 @@ static int eatResult(sqlite3* handle, sqlite3_stmt* stmt, void* data)
 
 #endif
 
-void
-dbsimple__fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
+static void
+fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
 {
     int status;
     int column;
@@ -440,8 +440,8 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
     return 0;
 }
 
-int
-dbsimple__persistobject(struct object* object, dbsimple_session_type session)
+static int
+persistobject(struct object* object, dbsimple_session_type session)
 {
     int affected = -1;
     sqlite3_stmt* insertStmt = session->currentStmts[object->type->implementation*3+1];
@@ -563,10 +563,12 @@ opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionP
         (*sessionPtr)->stmts[i] = NULL;
     }
 
-    (*sessionPtr)->basesession.closesession = closesession;
-    (*sessionPtr)->basesession.syncdata  = syncdata;
-    (*sessionPtr)->basesession.fetchdata = fetchdata;
-    (*sessionPtr)->basesession.commitdata = commitdata;
+    (*sessionPtr)->basesession.closesession  = closesession;
+    (*sessionPtr)->basesession.syncdata      = syncdata;
+    (*sessionPtr)->basesession.fetchdata     = fetchdata;
+    (*sessionPtr)->basesession.commitdata    = commitdata;
+    (*sessionPtr)->basesession.fetchobject   = fetchobject;
+    (*sessionPtr)->basesession.persistobject = persistobject;
     return returnCode;
 }
 

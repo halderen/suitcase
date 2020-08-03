@@ -13,8 +13,8 @@ CLEANFILES+=schema_mysql.h schema_sqlite.h sqlstmts_mysql.h sqlstmts_sqlite.h
 ACLOCAL_AMFLAGS = -Im4
 AM_CFLAGS = -DSYSCONFDIR=@sysconfdir@
 
-libsuitcase_CFLAGS = -D_REENTRANT -O2
-suitcase_CFLAGS = @MYSQL_CFLAGS@ @SQLITE3_CFLAGS@ -D_REENTRANT -O2
+# libsuitcase_CFLAGS = -D_REENTRANT -O2
+suitcase_CFLAGS = @MYSQL_CFLAGS@ @SQLITE3_CFLAGS@
 suitcase_LDFLAGS = @MYSQL_LDFLAGS@ @SQLITE3_LDFLAGS@
 suitcase_LDADD = schema_mysql.o schema_sqlite.o $(LIBCURL) -ldl @PTHREAD_LIBS@
 
@@ -40,15 +40,22 @@ suitcase_SOURCES += daemonize.c daemonize.h janitor.c janitor.h
 suitcase_SOURCES += settings.c settings.h logging.c logging.h
 suitcase_SOURCES += utilities.c utilities.h
 suitcase_SOURCES += tree.c tree.h
-suitcase_SOURCES += sqlstmts.c
+suitcase_SOURCES += dbsimple.h dbsimple.c dbsimplebase.h dbsimplebase.c
 suitcase_SOURCES += sqlstmts_sqlite.inc
 
+if INCLUDE_SQLITE3
+suitcase_SOURCES += dbsimple_sqlite3.c
+endif
+if INCLUDE_MYSQL
+suitcase_SOURCES += dbsimple_mysql.c
+endif
 if HAVE_SQLITE3
 suitcase_SOURCES += schema_sqlite.h
 endif
 if HAVE_MYSQL
 suitcase_SOURCES += schema_mysql.h
 endif
+suitcase_SOURCES += dbsimple_dummy.c
 
 test_SOURCES = tests/suitcasetest.c schema_mysql.h
 test_CFLAGS = @CUNIT_INCLUDES@ @MYSQL_CFLAGS@

@@ -6,6 +6,7 @@ AC_DEFUN([DYNAMIC_SQLITE3],[
 		[enable_dynamic_sqlite3="yes"]
 	)
 	if test "${enable_dynamic_sqlite3}" = "yes"; then
+		AC_DEFINE(DO_DYNAMIC_SQLITE3, 1, [Define if dynamic sqlite3 loading])
 		CPPFLAGS="$CPPFLAGS -DDYNAMIC_SQLITE3"
 	fi
 ])

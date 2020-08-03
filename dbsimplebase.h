@@ -2,6 +2,7 @@
 #define DBSIMPLEBASE_H
 
 #include <stdarg.h>
+#include "tree.h"
 
 struct dbsimple_connectionbase {
     char* location;
@@ -25,6 +26,8 @@ struct dbsimple_sessionbase {
     int (*syncdata)(dbsimple_session_type, const char* const** query,  void* data);
     void* (*fetchdata)(dbsimple_session_type, const char* const** query, va_list);
     int (*commitdata)(dbsimple_session_type);
+    void (*fetchobject)(struct dbsimple_definition*, dbsimple_session_type);
+    int (*persistobject)(struct object*, dbsimple_session_type);
 };
 
 enum objectstate { OBJUNKNOWN=0, OBJNEW, OBJCLEAN, OBJREMOVED, OBJMODIFIED };
