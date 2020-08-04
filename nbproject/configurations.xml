@@ -5,6 +5,7 @@
       <in>daemonize.c</in>
       <in>dbsimple.c</in>
       <in>dbsimple_dummy.c</in>
+      <in>dbsimple_mysql.c</in>
       <in>dbsimple_sqlite3.c</in>
       <in>dbsimplebase.c</in>
       <in>janitor.c</in>
@@ -35,18 +36,25 @@
         <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
       <flagsDictionary>
-        <element flagsID="0" commonFlags="-g -O2"/>
-        <element flagsID="1" commonFlags="-g -O2 -fPIC"/>
-        <element flagsID="2" commonFlags="-mtune=generic -march=x86-64 -g -O2"/>
+        <element flagsID="0" commonFlags="-fPIC"/>
+        <element flagsID="1" commonFlags="-g -O2"/>
       </flagsDictionary>
       <codeAssistance>
       </codeAssistance>
       <makefileType>
         <makeTool>
           <buildCommandWorkingDir>.</buildCommandWorkingDir>
-          <buildCommand>${MAKE} -f Makefile tdd</buildCommand>
+          <buildCommand>${MAKE} -f Makefile </buildCommand>
           <cleanCommand>${MAKE} -f Makefile clean</cleanCommand>
           <executablePath></executablePath>
+          <cTool>
+            <incDir>
+              <pElem>.</pElem>
+            </incDir>
+            <preprocessorList>
+              <Elem>HAVE_CONFIG_H</Elem>
+            </preprocessorList>
+          </cTool>
         </makeTool>
         <preBuild>
           <preBuildCommandWorkingDir>.</preBuildCommandWorkingDir>
@@ -54,141 +62,145 @@
         </preBuild>
       </makefileType>
       <item path="daemonize.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool>
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+            <pElem>/usr/include/X</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
         </cTool>
       </item>
       <item path="dbsimple.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool flags="1">
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
         </cTool>
       </item>
-      <item path="dbsimple_dummy.c" ex="false" tool="0" flavor2="0">
-        <cTool flags="0">
+      <item path="dbsimple_dummy.c" ex="false" tool="0" flavor2="2">
+        <cTool>
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+            <pElem>/usr/include/X</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
+        </cTool>
+      </item>
+      <item path="dbsimple_mysql.c" ex="false" tool="0" flavor2="2">
+        <cTool>
+          <incDir>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+            <pElem>/usr/include/X</pElem>
+          </incDir>
         </cTool>
       </item>
       <item path="dbsimple_sqlite3.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="2">
+        <cTool flags="1">
           <incDir>
-            <pElem>/usr/lib64/gcc/x86_64-slackware-linux/9.3.0/include</pElem>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
           </incDir>
         </cTool>
       </item>
       <item path="dbsimplebase.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool>
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+            <pElem>/usr/include/X</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
         </cTool>
       </item>
       <item path="janitor.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool>
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+            <pElem>/usr/include/X</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
         </cTool>
       </item>
       <item path="logging.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool>
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+            <pElem>/usr/include/X</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
         </cTool>
       </item>
       <item path="main.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool flags="1">
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
         </cTool>
       </item>
       <item path="module.c" ex="false" tool="0" flavor2="2">
         <cTool>
           <incDir>
-            <pElem>.</pElem>
             <pElem>/usr/include/mysql</pElem>
             <pElem>/usr/include/mysql/mysql</pElem>
           </incDir>
           <preprocessorList>
             <Elem>DYNAMIC_MYSQL</Elem>
             <Elem>DYNAMIC_SQLITE3</Elem>
-            <Elem>HAVE_CONFIG_H</Elem>
           </preprocessorList>
         </cTool>
       </item>
       <item path="settings.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool>
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+            <pElem>/usr/include/X</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
         </cTool>
       </item>
       <item path="sqlstmts.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool flags="1">
           <incDir>
-            <pElem>.</pElem>
             <pElem>/usr/include/mysql</pElem>
             <pElem>/usr/include/mysql/mysql</pElem>
           </incDir>
           <preprocessorList>
             <Elem>DYNAMIC_MYSQL</Elem>
             <Elem>DYNAMIC_SQLITE3</Elem>
-            <Elem>HAVE_CONFIG_H</Elem>
           </preprocessorList>
         </cTool>
       </item>
       <item path="tree.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
+        <cTool flags="0">
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/X</pElem>
           </incDir>
           <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
             <Elem>PIC</Elem>
-            <Elem>SYSCONFDIR=/home/berry/vakantie2020/suitcase/ROOT/etc</Elem>
+            <Elem>SYSCONFDIR=/etc</Elem>
           </preprocessorList>
         </cTool>
       </item>
       <item path="utilities.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool>
           <incDir>
-            <pElem>.</pElem>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+            <pElem>/usr/include/X</pElem>
           </incDir>
-          <preprocessorList>
-            <Elem>HAVE_CONFIG_H</Elem>
-          </preprocessorList>
         </cTool>
       </item>
     </conf>

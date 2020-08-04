@@ -20,8 +20,6 @@ int dbsimple_finalize(void) {
     return 0;
 }
 
-const struct dbsimple_module* module = NULL;
-
 struct dbsimple_connection_struct {
     struct dbsimple_connectionbase baseconnection;
 };
@@ -30,10 +28,22 @@ struct dbsimple_session_struct {
     struct dbsimple_sessionbase basesession;
 };
 
+static int nmodules = 0;
+static const struct dbsimple_module** modules = NULL;
+
 int
 dbsimple_registermodule(const struct dbsimple_module* bindings)
 {
-    module = bindings;
+    int nmodules2;
+    const struct dbsimple_module** modules2;
+    nmodules2 = nmodules + 1;
+    modules2 = realloc(modules, sizeof(struct dbsimple_module*) * nmodules2);
+    if(modules2) {
+        modules2[nmodules2 - 1] = bindings;
+        modules = modules2;
+        nmodules = nmodules2;
+    } else
+        return -1;
     return 0;
 }
 
@@ -46,6 +56,7 @@ dbsimple_openconnection(char* location,
     int returnCode = 0;
     int count;
     dbsimple_connection_type connection;
+    const struct dbsimple_module* module = NULL;
 
     if(nqueries < 0) {
         for(count=0; queries[count]; count++)
@@ -57,6 +68,23 @@ dbsimple_openconnection(char* location,
             ;
         ndefinitions = count;
     }
+
+    for (int i=0; i<nmodules; i++) {
+        fprintf(stderr,"BERRY %s %s %ld \n",location,modules[i]->identifier, strlen(modules[i]->identifier));
+        if (!strncasecmp(location, modules[i]->identifier, strlen(modules[i]->identifier)) &&
+           location[strlen(modules[i]->identifier)] == ':') {
+            module = modules[i];
+            location = &location[strlen(modules[i]->identifier) + 1];
+            break;
+        } else if (modules[i]->identifier == NULL) {
+            module = modules[i];
+        }
+    }
+    if (!module) {
+        abort(); // BERRY
+        return -1;
+    }
+
     returnCode = module->openconnection(location, nqueries, queries, connectionPtr);
     connection = *connectionPtr;
     connection->baseconnection.location     = strdup(location);
@@ -70,6 +98,8 @@ dbsimple_openconnection(char* location,
     if(module->syncdata)        connection->baseconnection.syncdata        = module->syncdata;
     if(module->fetchdata)       connection->baseconnection.fetchdata       = module->fetchdata;
     if(module->commitdata)      connection->baseconnection.commitdata      = module->commitdata;
+    if(module->fetchobject)     connection->baseconnection.fetchobject     = module->fetchobject;
+    if(module->persistobject)   connection->baseconnection.persistobject   = module->persistobject;
     return returnCode;
 }
 
@@ -93,6 +123,8 @@ dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_type*
     session->basesession.syncdata      = connection->baseconnection.syncdata;
     session->basesession.fetchdata     = connection->baseconnection.fetchdata;
     session->basesession.commitdata    = connection->baseconnection.commitdata;
+    session->basesession.fetchobject   = connection->baseconnection.fetchobject;
+    session->basesession.persistobject = connection->baseconnection.persistobject;
     return returnCode;
 }
 

@@ -138,7 +138,7 @@ dbsimple_sqlite3_finalize(void)
 
 #else
 
-int dbsimple_mysql_initialize(char* hint) {
+int dbsimple_mysql_initialize(__attribute__((unused)) char* hint) {
     return -1;
 }
 

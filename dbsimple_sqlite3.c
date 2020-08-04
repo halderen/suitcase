@@ -180,13 +180,15 @@ static int closesession(dbsimple_session_type session);
 static int syncdata(dbsimple_session_type session, const char* const** query, void* data);
 static void* fetchdata(dbsimple_session_type session, const char* const** query, va_list args);
 static int commitdata(dbsimple_session_type session);
+static void fetchobject(struct dbsimple_definition* def, dbsimple_session_type session);
+static int persistobject(struct object* object, dbsimple_session_type session);
 
 static void errorcallback(__attribute__((unused)) void *data, __attribute__((unused)) int errorCode, __attribute__((unused)) const char *errorMessage) {
     //fprintf(stderr, "ERROR %s (%d)\n", errorMessage, errorCode);
 }
 
 static const struct dbsimple_module module = {
-    "sqlite", openconnection, closeconnection, opensession, closesession, syncdata, fetchdata, commitdata
+    "sqlite", openconnection, closeconnection, opensession, closesession, syncdata, fetchdata, commitdata, fetchobject, persistobject
 };
 
 
