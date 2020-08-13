@@ -21,7 +21,6 @@ AC_C_CONST
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T
 AC_TYPE_UINT16_T
-ACX_DLOPEN
 AX_PTHREAD
 AX_C___ATTRIBUTE__
 
@@ -50,9 +49,7 @@ DYNAMIC_SQLITE3
 DYNAMIC_MYSQL
 AM_CONDITIONAL([INCLUDE_SQLITE3], [grep -E "HAVE_SQLITE3 |DO_DYNAMIC_SQLITE3" confdefs.h > /dev/null])
 AM_CONDITIONAL([INCLUDE_MYSQL], [grep -E "HAVE_MYSQL |DO_DYNAMIC_MYSQL" confdefs.h > /dev/null])
-dnl These checks must be after probing path for them
 AC_CHECK_HEADERS([sqlite3.h])
-AC_CHECK_HEADERS([mysql.h])
-
+AC_CHECK_HEADER([mysql/mysql.h], [AC_DEFINE([HAVE_MYSQL_H], 1, [Define to 1 if you have <mysql.h>.])], [])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
