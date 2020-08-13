@@ -70,7 +70,6 @@ dbsimple_openconnection(char* location,
     }
 
     for (int i=0; i<nmodules; i++) {
-        fprintf(stderr,"BERRY %s %s %ld \n",location,modules[i]->identifier, strlen(modules[i]->identifier));
         if (!strncasecmp(location, modules[i]->identifier, strlen(modules[i]->identifier)) &&
            location[strlen(modules[i]->identifier)] == ':') {
             module = modules[i];
@@ -81,7 +80,6 @@ dbsimple_openconnection(char* location,
         }
     }
     if (!module) {
-        abort(); // BERRY
         return -1;
     }
 

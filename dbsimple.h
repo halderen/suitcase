@@ -30,7 +30,10 @@ struct dbsimple_definition {
     int flags;
     int nfields;
     struct dbsimple_field* fields;
-    int implementation;
+    union {
+        int i;
+        void* p;
+    } implementation;
 };
 
 int dbsimple_initialize(char* hint);
