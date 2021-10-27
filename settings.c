@@ -313,7 +313,10 @@ settings_access(settings_handle* handleptr, int basefd, const char* filename)
     }
     
     yaml_parser_initialize(&parser);
-    fd = openat(basefd, filename, O_RDONLY);
+    if(!strncmp(filename,"/",strlen("/")))
+        fd = open(filename, O_RDONLY);
+    else
+        fd = openat(basefd, filename, O_RDONLY);
     if(fd >= 0)
         input = fdopen(fd, "r");
     if(fd >= 0 && input) {
