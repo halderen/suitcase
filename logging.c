@@ -238,6 +238,7 @@ logger_resetup(logger_cls_type* cls)
             cls->chain = &logger_setup.chains[i];
         }
     }
+    logger_message(&logger, NULL, logger_NOTICE, "logging changed for %s", cls->name);
     pthread_mutex_unlock(&mutex);
 }
 
@@ -352,7 +353,6 @@ logger_mark_performance(const char* message)
         t = time(NULL);
         b = (intptr_t) sbrk(0);
     }
-fprintf(stderr, "MARK#%02d %2ld %4ld %s\n", markcount, (long)(t-marktime), (long)((b-markbrk+1048576/2)/1048576), message);
     logger_message(&logger_cls_performance, logger_ctx, logger_INFO, "MARK#%02d %2ld %4ld %s\n", markcount, (long)(t-marktime), (long)((b-markbrk+1048576/2)/1048576), message);
     ++markcount;
     return 0;
