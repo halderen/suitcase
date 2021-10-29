@@ -79,13 +79,10 @@ int (*sqlite3_finalize)(sqlite3_stmt*);
 int (*sqlite3_prepare_v2)(sqlite3*,const char*,int,sqlite3_stmt**,const char**);
 int (*sqlite3_reset)(sqlite3_stmt*);
 
-static void* dlhandle = NULL;
-
 int
-dbsimple_sqlite3_initialize(char* hint)
+dbsimple_sqlite3_initialize(void)
 {
-    (void)hint;
-    dlhandle = dlopen("libsqlite3.so.0", RTLD_LAZY);
+    void* dlhandle = NULL;
     sqlite3_errmsg           = (const char* (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_errmsg"));
     sqlite3_errcode          = (int (*)(sqlite3*))functioncast(dlsym(dlhandle, "sqlite3_errcode"));
     sqlite3_open_v2          = (int(*)(const char *, sqlite3 **, int, const char*))functioncast(dlsym(dlhandle, "sqlite3_open_v2"));
@@ -136,14 +133,13 @@ dbsimple_sqlite3_finalize(void)
     sqlite3_finalize         = NULL;
     sqlite3_prepare_v2       = NULL;
     sqlite3_reset            = NULL;
-    dlclose(dlhandle);
     return 0;
 }
 
 #else
 
 int
-dbsimple_sqlite3_initialize(__attribute__((unused)) char* hint)
+dbsimple_sqlite3_initialize()
 {
     return initialize();
 }

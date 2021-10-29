@@ -12,7 +12,7 @@
 #include "dbsimple.h"
 #include "dbsimplebase.h"
 
-int dbsimple_initialize(__attribute__((unused)) char* hint) {
+int dbsimple_initialize(void) {
     return 0;
 }
 

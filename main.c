@@ -3,18 +3,34 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <string.h>
+#include <fcntl.h>
+#include <dlfcn.h>
+#include <getopt.h>
 #include "daemonize.h"
 #include "utilities.h"
 #include "settings.h"
+#include "modules.h"
+#include "commandline.h"
+#include "dbsimple.h"
+#include "example.h"
 
-char *argv0;
+struct library_struct* libraries = NULL;
+
+extern int dbsimple_sqlite3_initialize(void);
+extern int dbsimple_dummy_initialize(void);
 
 void
 usage(char *argv0)
 {
     fprintf(stderr, "usage: %s [ options ]\n", argv0);
 }
+
+struct option longopts[] = {
+    { "conf", required_argument, NULL, 'c' },
+    { NULL,   0, NULL, 0 }
+};
 
 int
 main(int argc, char* argv[])
@@ -26,15 +42,30 @@ main(int argc, char* argv[])
     (void)argc;
     (void)argv;
     settings_handle cfghandle = NULL;
+    char* cfgfile = PACKAGE_NAME ".conf";
 
     /* Get the name of the program */
     if((argv0 = strrchr(argv[0],'/')) == NULL)
         argv0 = argv[0];
     else
         ++argv0;
+    programsetup(argv[0]);
 
-    settings_configure(&cfghandle, QUOTE(SYSCONFDIR), PACKAGE_NAME ".conf", -1);
-    settings_access(NULL, 0, NULL);
+    /* Parse command line options */
+    while((ch = getopt_long(argc, argv, "c:", longopts, NULL)) > 0) {
+        switch(ch) {
+            case 'c':
+                cfgfile = argv[optind];
+                break;
+            case '?':
+            default:
+                fprintf(stderr,"%s: Unknown arguments\n",argv0);
+                exit(1);
+        }
+    }
+
+    /* Read configuration file */
+    settings_configure(&cfghandle, QUOTE(SYSCONFDIR), cfgfile, -1);
 
     /* Steps to act as a daemon process*/
     if (optdaemon) {
@@ -69,6 +100,47 @@ main(int argc, char* argv[])
         write(pipefd[1], "", 1);
         close(pipefd[1]);
     }
+
+    /* Load modules */
+    int count;
+    char* path;
+    settings_getcompound(cfghandle, &count, "modules.libraries");
+    for(int i=0; i<count; i++) {
+        settings_getstring(cfghandle, &path, "", "modules.libraries.%d", i);
+	fprintf(stderr, "loading %s\n",path);
+        free(path);
+        dlopen(path, RTLD_LAZY|RTLD_LOCAL|RTLD_DEEPBIND);
+    }
+
+    /* Initialize simple modules */
+    char* name;
+    int found;
+    const void* table;
+    for(found=modules_lookup("initialize",&name,&table); found; found=modules_lookup(NULL,&name,&table)) {
+        int (*func)(void);
+        fprintf(stderr,"initialize %s\n",name);
+        func = (int(*)()) functioncast(*(void**)table);
+        func();
+    }
+
+    /* Non-modules registered libraries */
+    for(struct library_struct* library=libraries; library; library=library->next) {
+        fprintf(stderr,"library\n");
+        fprintf(stderr,"library \"%s\"\n",library->name);
+    }
+
+    /* setup database layer */
+    dbsimple_initialize();
+    dbsimple_dummy_initialize();
+#if defined(DO_DYNAMIC_SQLITE3) || defined(HAVE_SQLITE3)
+    dbsimple_sqlite3_initialize();
+#endif
+    char* connectstr;
+    settings_getstring(cfghandle, &connectstr, "sqlite3:file::memory", "datastore.datasource");
+    example_dbsetup(connectstr);
+    free(connectstr);
+
+    fprintf(stderr,"dbsimple\n");
 
     /* do stuff */
     exit(0);

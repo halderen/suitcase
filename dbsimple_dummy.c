@@ -66,11 +66,11 @@ fetchdata(__attribute__((unused)) dbsimple_session_type session, __attribute__((
 }
 
 static const struct dbsimple_module module = {
-    "dummy", openconnection, closeconnection, opensession, closesession, syncdata, fetchdata, commitdata
+    "dummy", openconnection, closeconnection, opensession, closesession, syncdata, fetchdata, commitdata, NULL, NULL
 };
 
 int
-dbsimple_dummy_initialize(__attribute__((unused)) char* hint)
+dbsimple_dummy_initialize(void)
 {
     dbsimple_registermodule(&module);
     return 0;

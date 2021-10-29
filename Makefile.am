@@ -1,4 +1,4 @@
-.PHONY: analyze
+.PHONY: all clean install uninstall analyze
 
 MAINTAINERCLEANFILES=$(srcdir)/Makefile.in
 # config.log config.status \
@@ -8,7 +8,7 @@ MAINTAINERCLEANFILES=$(srcdir)/Makefile.in
 # $(srcdir)/config.guess $(srcdir)/config.sub
 
 CLEANFILES=$(srcdir)/*~ core* vgcore*
-CLEANFILES+=schema_mysql.h schema_sqlite.h sqlstmts_mysql.h sqlstmts_sqlite.h
+CLEANFILES+=schema_mysql.h schema_sqlite3.h sqlstmts_mysql.h sqlstmts_sqlite3.h
 
 ACLOCAL_AMFLAGS = -Im4
 AM_CFLAGS = -DSYSCONFDIR=@sysconfdir@
@@ -16,10 +16,10 @@ AM_CFLAGS = -DSYSCONFDIR=@sysconfdir@
 # libsuitcase_CFLAGS = -D_REENTRANT -O2
 suitcase_CFLAGS = @MYSQL_CFLAGS@ @SQLITE3_CFLAGS@
 suitcase_LDFLAGS = @MYSQL_LDFLAGS@ @SQLITE3_LDFLAGS@
-suitcase_LDADD = schema_mysql.o schema_sqlite.o $(LIBCURL) -ldl @PTHREAD_LIBS@
+suitcase_LDADD = schema_mysql.o schema_sqlite3.o libsuitcase.la $(LIBCURL) -ldl @PTHREAD_LIBS@
 
 check_PROGRAMS = test
-lib_LTLIBRARIES = libsuitcase.la
+lib_LTLIBRARIES = libsuitcase.la libmoduledbmysql.la
 bin_PROGRAMS = suitcase
 
 install-exec-hook:
@@ -29,33 +29,35 @@ install-exec-hook:
 uninstall-hook:
 	rm -f $(DESTDIR)$(bindir)/suitcased$(EXEEXT)
 
-BUILT_SOURCES = sqlstmts_sqlite.inc
-BUILT_SOURCES += schema_mysql.h schema_sqlite.h
+BUILT_SOURCES = sqlstmts_sqlite3.inc sqlstmts_mysql.inc
+BUILT_SOURCES += schema_mysql.h schema_sqlite3.h
 EXTRA_DIST = $(srcdir)/LICENSE $(srcdir)/README.md
-EXTRA_DIST += schema_mysql.txt schema_sqlite.txt
+EXTRA_DIST += schema_mysql.txt schema_sqlite3.txt
 
-libsuitcase_la_SOURCES = tree.c tree.h
-suitcase_SOURCES  = main.c
-suitcase_SOURCES += daemonize.c daemonize.h janitor.c janitor.h
-suitcase_SOURCES += settings.c settings.h logging.c logging.h
-suitcase_SOURCES += utilities.c utilities.h
-suitcase_SOURCES += tree.c tree.h
-suitcase_SOURCES += dbsimple.h dbsimple.c dbsimplebase.h dbsimplebase.c
-suitcase_SOURCES += sqlstmts_sqlite.inc
+libsuitcase_la_SOURCES  = modules.c modules.h
+libsuitcase_la_SOURCES += janitor.c janitor.h
+libsuitcase_la_SOURCES += logging.c logging.h
+libsuitcase_la_SOURCES += utilities.c utilities.h
+libsuitcase_la_SOURCES += tree.c tree.h
+libsuitcase_la_SOURCES += settings.c settings.h
+libsuitcase_la_SOURCES += dbsimple.h dbsimple.c dbsimplebase.h dbsimplebase.c
+suitcase_SOURCES  = main.c example.c example.h
+suitcase_SOURCES += commandline.c commandline.h
+suitcase_SOURCES += daemonize.c daemonize.h
+suitcase_SOURCES += sqlstmts_sqlite3.inc
 
 if INCLUDE_SQLITE3
 suitcase_SOURCES += dbsimple_sqlite3.c
 endif
-if INCLUDE_MYSQL
-suitcase_SOURCES += dbsimple_mysql.c
-endif
 if HAVE_SQLITE3
-suitcase_SOURCES += schema_sqlite.h
-endif
-if HAVE_MYSQL
-suitcase_SOURCES += schema_mysql.h
+suitcase_SOURCES += schema_sqlite3.h
 endif
 suitcase_SOURCES += dbsimple_dummy.c
+
+if HAVE_MYSQL
+libmoduledbmysql_la_SOURCES = moduledbmysql.c dbsimple_mysql.c schema_mysql.h
+libmoduledbmysql_la_LIDADD  = libsuitcase.la @MYSQL_LDFLAGS@
+endif
 
 test_SOURCES = tests/suitcasetest.c schema_mysql.h
 test_CFLAGS = @CUNIT_INCLUDES@ @MYSQL_CFLAGS@
@@ -88,7 +90,7 @@ TESTS = $(check_PROGRAMS)
 	       -v prefix=$(*)_ -v postfix=_ -v queryarray=$(*)_array \
 	       $(*).sql
 
-sqlstmts_sqlite.inc: Makefile
+sqlstmts_sqlite3.inc: Makefile
 
 doxygen:
 	rm -rf $(top_builddir)/doxygen

@@ -1,9 +1,9 @@
-const char* const sqlstmts_sqlite_qschema_[] = {
+const char* const sqlstmts_sqlite3_qschema_[] = {
   "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='properties'",
 
   NULL };
 
-const char* const sqlstmts_sqlite_schema_[] = {
+const char* const sqlstmts_sqlite3_schema_[] = {
   "CREATE TABLE properties (\n"
   "  propertyName VARCHAR(32),\n"
   "  propertyValue VARCHAR(255)\n"
@@ -30,23 +30,11 @@ const char* const sqlstmts_sqlite_schema_[] = {
 
   "INSERT INTO properties VALUES ( 'version', 4 )",
 
-  "INSERT INTO policy VALUES ( 0, \"default\" )",
-
-  "INSERT INTO policy VALUES ( 1, \"experimental\" )",
-
-  "INSERT INTO zone VALUES ( 0, \"example.com\", 1, 0, NULL )",
-
-  "INSERT INTO zone VALUES ( 1, \"example.org\", 1, 0, NULL )",
-
-  "INSERT INTO zone VALUES ( 2, \"opendnssec.org\", 1, 1, NULL )",
-
-  "INSERT INTO zone VALUES ( 3, \"opendnssec.com\", 1, 1, 2 )",
-
   "UPDATE properties SET propertyValue = 3 WHERE propertyName = 'version'",
 
   NULL };
 
-const char* const sqlstmts_sqlite_schema1_[] = {
+const char* const sqlstmts_sqlite3_schema1_[] = {
   "CREATE TABLE policy (\n"
   "  id INT NOT NULL,\n"
   "  name TEXT NOT NULL\n"
@@ -56,12 +44,12 @@ const char* const sqlstmts_sqlite_schema1_[] = {
 
   NULL };
 
-const char* const sqlstmts_sqlite_qschema1_[] = {
+const char* const sqlstmts_sqlite3_qschema1_[] = {
   "SELECT count(propertyName) FROM properties WHERE propertyName='version' AND propertyValue >= 3",
 
   NULL };
 
-const char* const sqlstmts_sqlite_schema2_[] = {
+const char* const sqlstmts_sqlite3_schema2_[] = {
   "CREATE TABLE zone (\n"
   "  id INT NOT NULL,\n"
   "  name TEXT NOT NULL,\n"
@@ -76,12 +64,12 @@ const char* const sqlstmts_sqlite_schema2_[] = {
 
   NULL };
 
-const char* const sqlstmts_sqlite_qschema2_[] = {
+const char* const sqlstmts_sqlite3_qschema2_[] = {
   "SELECT count(propertyName) FROM properties WHERE propertyName='version' AND propertyValue >= 4",
 
   NULL };
 
-const char* const sqlstmts_sqlite_default_[] = {
+const char* const sqlstmts_sqlite3_default_[] = {
   "SELECT id, name FROM policy ORDER BY name",
 
   "UPDATE policy SET name = ? WHERE id = ?",
@@ -96,21 +84,21 @@ const char* const sqlstmts_sqlite_default_[] = {
 
   NULL };
 
-const char* const* sqlstmts_sqlite_array[] = {
-  sqlstmts_sqlite_schema2_,
-  sqlstmts_sqlite_qschema_,
-  sqlstmts_sqlite_qschema1_,
-  sqlstmts_sqlite_qschema2_,
-  sqlstmts_sqlite_default_,
-  sqlstmts_sqlite_schema_,
-  sqlstmts_sqlite_schema1_,
+const char* const* sqlstmts_sqlite3_array[] = {
+  sqlstmts_sqlite3_schema2_,
+  sqlstmts_sqlite3_qschema_,
+  sqlstmts_sqlite3_qschema1_,
+  sqlstmts_sqlite3_qschema2_,
+  sqlstmts_sqlite3_default_,
+  sqlstmts_sqlite3_schema_,
+  sqlstmts_sqlite3_schema1_,
   NULL 
 };
 
-const char* const** sqlstmts_sqlite_schema2 = &sqlstmts_sqlite_array[0];
-const char* const** sqlstmts_sqlite_qschema = &sqlstmts_sqlite_array[1];
-const char* const** sqlstmts_sqlite_qschema1 = &sqlstmts_sqlite_array[2];
-const char* const** sqlstmts_sqlite_qschema2 = &sqlstmts_sqlite_array[3];
-const char* const** sqlstmts_sqlite_default = &sqlstmts_sqlite_array[4];
-const char* const** sqlstmts_sqlite_schema = &sqlstmts_sqlite_array[5];
-const char* const** sqlstmts_sqlite_schema1 = &sqlstmts_sqlite_array[6];
+const char* const** sqlstmts_sqlite3_schema2 = &sqlstmts_sqlite3_array[0];
+const char* const** sqlstmts_sqlite3_qschema = &sqlstmts_sqlite3_array[1];
+const char* const** sqlstmts_sqlite3_qschema1 = &sqlstmts_sqlite3_array[2];
+const char* const** sqlstmts_sqlite3_qschema2 = &sqlstmts_sqlite3_array[3];
+const char* const** sqlstmts_sqlite3_default = &sqlstmts_sqlite3_array[4];
+const char* const** sqlstmts_sqlite3_schema = &sqlstmts_sqlite3_array[5];
+const char* const** sqlstmts_sqlite3_schema1 = &sqlstmts_sqlite3_array[6];

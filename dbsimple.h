@@ -36,7 +36,7 @@ struct dbsimple_definition {
     } implementation;
 };
 
-int dbsimple_initialize(char* hint);
+int dbsimple_initialize(void);
 int dbsimple_finalize(void);
 int dbsimple_openconnection(char* location,
                             int nqueries, const char* const ** queries,

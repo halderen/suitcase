@@ -4,27 +4,25 @@ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='properties';
 -- schema
 CREATE TABLE properties (
   propertyName VARCHAR(32),
-  propertyValue VARCHAR(255)
+  propertyValue VARCHAR(255),
+  PRIMARY KEY ( propertyName )
 );
-CREATE UNIQUE INDEX propertyIndex ON properties ( propertyName );
-
+INSERT INTO properties VALUES ( 'version', 4 );
 CREATE TABLE policy (
   id INT NOT NULL,
-  name TEXT NOT NULL
+  name TEXT NOT NULL,
+  PRIMARY KEY ( id ),
+  UNIQUE KEY ( name )
 );
-CREATE UNIQUE INDEX policyIndex ON policy ( id );
-
 CREATE TABLE zone (
   id INT NOT NULL,
   name TEXT NOT NULL,
   revision INT NOT NULL default 1,
   policy INT NOT NULL,
-  parent INT DEFAULT NULL
+  parent INT DEFAULT NULL,
+  PRIMARY KEY ( id ),
+  UNIQUE KEY ( name )
 );
-CREATE UNIQUE INDEX zoneIndex on zone ( id );
-
-INSERT INTO properties VALUES ( 'version', 4 );
-
 INSERT INTO policy VALUES ( 0, "default" );
 INSERT INTO policy VALUES ( 1, "experimental" );
 INSERT INTO zone VALUES ( 0, "example.com", 1, 0, NULL );
@@ -41,12 +39,12 @@ UPDATE properties SET propertyValue = 4 WHERE propertyName = 'version';
 -- default
 SELECT id, name FROM policy ORDER BY name;
 
+SELECT id, revision, name, policy, policy, parent, parent FROM zone ORDER BY name;
+
 UPDATE policy SET name = ? WHERE id = ?;
 
 DELETE FROM policy WHERE id = ?;
 
-SELECT id, revision, name, policy, policy, parent, parent FROM zone ORDER BY name;
-
-INSERT INTO zone ( id, revision, name, policy ) VALUES ( ?, ?, ?, ? );
+INSERT INTO zone ( id, revision, name, policy, parent ) VALUES ( ?, ?, ?, ?, ? );
 
 DELETE FROM zone WHERE id = ? AND revision = ?;

@@ -28,18 +28,6 @@ CREATE UNIQUE INDEX zoneIndex on zone ( id );
 
 INSERT INTO properties VALUES ( 'version', 4 );
 
-INSERT INTO policy VALUES ( 0, "default" );
-
-INSERT INTO policy VALUES ( 1, "experimental" );
-
-INSERT INTO zone VALUES ( 0, "example.com", 1, 0, NULL );
-
-INSERT INTO zone VALUES ( 1, "example.org", 1, 0, NULL );
-
-INSERT INTO zone VALUES ( 2, "opendnssec.org", 1, 1, NULL );
-
-INSERT INTO zone VALUES ( 3, "opendnssec.com", 1, 1, 2 );
-
 UPDATE properties SET propertyValue = 3 WHERE propertyName = 'version';
 
 -- schema1
