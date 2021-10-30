@@ -1,5 +1,6 @@
 AC_PREREQ([2.69])
-AC_INIT([suitcase], [0.1-dev], [http://github.org/halderen/suitcase/])
+AC_INIT([suitcase], [0.1-dev], [https://github.org/halderen/suitcase/])
+AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([subdir-objects])
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
@@ -46,7 +47,6 @@ AC_CHECK_LIB(backtrace, backtrace_full, [AC_DEFINE([HAVE_BACKTRACE_FULL], [1], [
 AM_CONDITIONAL([HAVE_MYSQL],[grep HAVE_MYSQL confdefs.h > /dev/null])
 AM_CONDITIONAL([HAVE_SQLITE3],[grep HAVE_SQLITE3 confdefs.h > /dev/null])
 DYNAMIC_SQLITE3
-DYNAMIC_MYSQL
 AM_CONDITIONAL([INCLUDE_SQLITE3], [grep -E "HAVE_SQLITE3 |DO_DYNAMIC_SQLITE3" confdefs.h > /dev/null])
 AM_CONDITIONAL([INCLUDE_MYSQL], [grep -E "HAVE_MYSQL |DO_DYNAMIC_MYSQL" confdefs.h > /dev/null])
 AC_CHECK_HEADERS([sqlite3.h])
