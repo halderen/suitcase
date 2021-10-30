@@ -1,6 +1,6 @@
 .PHONY: all clean install uninstall analyze
 
-MAINTAINERCLEANFILES=$(srcdir)/Makefile.in
+MAINTAINERCLEANFILE=$(srcdir)/Makefile.in
 # config.log config.status \
 # $(srcdir)/configure \
 # $(srcdir)/install-sh $(srcdir)/ltmain.sh $(srcdir)/missing \
@@ -41,7 +41,7 @@ libsuitcase_la_SOURCES += utilities.c utilities.h
 libsuitcase_la_SOURCES += tree.c tree.h
 libsuitcase_la_SOURCES += settings.c settings.h
 libsuitcase_la_SOURCES += dbsimple.h dbsimple.c dbsimplebase.h dbsimplebase.c
-suitcase_SOURCES  = main.c exampledb.c exampledb.h
+suitcase_SOURCES  = main.c exampledb.c exampledb.h examplelua.c examplelua.h
 suitcase_SOURCES += commandline.c commandline.h
 suitcase_SOURCES += daemonize.c daemonize.h
 suitcase_SOURCES += sqlstmts_sqlite3.inc
@@ -53,6 +53,7 @@ if HAVE_SQLITE3
 suitcase_SOURCES += schema_sqlite3.h
 endif
 suitcase_SOURCES += dbsimple_dummy.c
+suitcase_LDFLAGS += @LUA_LIB@
 
 if HAVE_MYSQL
 libmoduledbmysql_la_SOURCES = moduledbmysql.c dbsimple_mysql.c schema_mysql.h

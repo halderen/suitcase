@@ -10,6 +10,8 @@
       <in>dbsimple_sqlite3.c</in>
       <in>dbsimplebase.c</in>
       <in>example.c</in>
+      <in>exampledb.c</in>
+      <in>examplelua.c</in>
       <in>janitor.c</in>
       <in>logging.c</in>
       <in>main.c</in>
@@ -128,7 +130,25 @@
           </preprocessorList>
         </cTool>
       </item>
-      <item path="example.c" ex="false" tool="0" flavor2="0">
+      <item path="example.c" ex="false" tool="0" flavor2="2">
+        <cTool flags="0">
+          <incDir>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="exampledb.c" ex="false" tool="0" flavor2="2">
+        <cTool flags="0">
+          <incDir>
+            <pElem>/usr/include/mysql</pElem>
+            <pElem>/usr/include/mysql/mysql</pElem>
+            <pElem>/usr/include</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="examplelua.c" ex="false" tool="0" flavor2="0">
         <cTool flags="0">
           <incDir>
             <pElem>/usr/include/mysql</pElem>

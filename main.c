@@ -16,6 +16,7 @@
 #include "commandline.h"
 #include "dbsimple.h"
 #include "exampledb.h"
+#include "examplelua.h"
 
 struct library_struct* libraries = NULL;
 
@@ -146,5 +147,13 @@ main(int argc, char* argv[])
     }
     free(connectstr);
 
-    exit(0);
+    /* LUA support */
+    char* command;
+    settings_getstring(cfghandle, &command, NULL, "command");
+    if(command) {
+        executelua(command);
+        free(command);
+    }
+    
+    return 0;
 }
