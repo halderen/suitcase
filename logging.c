@@ -238,8 +238,8 @@ logger_resetup(logger_cls_type* cls)
             cls->chain = &logger_setup.chains[i];
         }
     }
-    logger_message(&logger, NULL, logger_NOTICE, "logging changed for %s", cls->name);
     pthread_mutex_unlock(&mutex);
+    logger_message(&logger, NULL, logger_NOTICE, "logging changed for %s", cls->name);
 }
 
 void
