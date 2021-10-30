@@ -341,6 +341,7 @@ settings_getstring(settings_handle handle, char** resultvalue, const char* defau
     va_list ap;
     yaml_document_t* document = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
+    *resultvalue = NULL;
     rc = parsescalar(document, sizeof(char*), resultvalue, NULL, parsefuncstring, NULL, fmt, ap);
     if(*resultvalue == NULL && defaultvalue)
         *resultvalue = strdup(defaultvalue);

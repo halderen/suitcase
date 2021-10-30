@@ -12,9 +12,10 @@
 #include "utilities.h"
 #include "settings.h"
 #include "modules.h"
+#include "logging.h"
 #include "commandline.h"
 #include "dbsimple.h"
-#include "example.h"
+#include "exampledb.h"
 
 struct library_struct* libraries = NULL;
 
@@ -50,6 +51,9 @@ main(int argc, char* argv[])
     else
         ++argv0;
     programsetup(argv[0]);
+
+    /* Enable logging */
+    logger_initialize(argv0);
 
     /* Parse command line options */
     while((ch = getopt_long(argc, argv, "c:", longopts, NULL)) > 0) {
@@ -136,12 +140,11 @@ main(int argc, char* argv[])
     dbsimple_sqlite3_initialize();
 #endif
     char* connectstr;
-    settings_getstring(cfghandle, &connectstr, "sqlite3:file::memory", "datastore.datasource");
-    example_dbsetup(connectstr);
+    settings_getstring(cfghandle, &connectstr, NULL, "storage.datasource");
+    if(connectstr && strcmp(connectstr,"")) {
+        example_dbsetup(connectstr);
+    }
     free(connectstr);
 
-    fprintf(stderr,"dbsimple\n");
-
-    /* do stuff */
     exit(0);
 }

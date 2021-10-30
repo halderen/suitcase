@@ -27,6 +27,8 @@ install:
 	make -f Makefile install
 dirtyclean:
 	rm -rf $(root)/sbin $(root)/share/man
+distclean:
+	make -f Makefile distclean
 Makefile:
 	sh autogen.sh
 	if [ \! -d ROOT ]; then mkdir ROOT ; fi

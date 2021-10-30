@@ -25,6 +25,7 @@ schema_*.h
 test-driver
 **/*.log
 **/.dirstamp
+core
 test
 compile
 libtool
