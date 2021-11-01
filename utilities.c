@@ -32,9 +32,9 @@
 #include <time.h>
 #include "utilities.h"
 
-functioncast_t
+functioncast_type
 functioncast(void*generic) {
-    functioncast_t* function = (functioncast_t*)&generic;
+    functioncast_type* function = (functioncast_type*)&generic;
     return *function;
 }
 

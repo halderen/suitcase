@@ -93,12 +93,12 @@ public:
 
 extern char* argv0;
 
-typedef void (*functioncast_t)(void);
-extern functioncast_t functioncast(void*generic);
+typedef void (*functioncast_type)(void);
+extern functioncast_type functioncast(void*generic);
 
 typedef void (*voidfunc)(void);
 
 extern int clamp(int value, int lbnd, int ubnd);
-unsigned long long int rnd(void);
+extern unsigned long long int rnd(void);
 
 #endif

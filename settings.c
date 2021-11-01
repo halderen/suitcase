@@ -227,7 +227,7 @@ parsefuncnamed(void* user, const char* str, void* resultvalue)
     char* end;
     const char* last;
     long* resultlong = (long*) resultvalue;
-    namedtranslatetype translate = (namedtranslatetype) *(functioncast_t*)user;
+    namedtranslatetype translate = (namedtranslatetype) *(functioncast_type*)user;
     errno = 0;
     while(isspace(*str))
       ++str;
@@ -388,6 +388,25 @@ settings_setcontext(settings_handle handle, const char* fmt, ...)
 }
 
 int
+settings_clone(settings_handle handle, settings_handle* copy)
+{
+    if(!handle)
+        handle = defaulthandle;
+    copy = malloc(sizeof(struct settings_struct));
+    if(!copy)
+        return -1;
+    (*copy)->document = handle->document;
+    (*copy)->root     = handle->root;
+    return 0;
+}
+
+void
+settings_free(settings_handle handle)
+{
+    free(handle);
+}
+
+int
 settings_getstring(settings_handle handle, char** resultvalue, const char* defaultvalue, const char* fmt, ...)
 {
     int rc;
@@ -473,7 +492,7 @@ settings_getnamed(settings_handle handle, long* resultvalue, const long* default
 {
     int rc;
     va_list ap;
-    functioncast_t funcptr = (functioncast_t)translate;
+    functioncast_type funcptr = (functioncast_type)translate;
     handle = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
     rc = parsescalar(handle->document, handle->root, sizeof(long), resultvalue, defaultvalue, parsefuncnamed, &funcptr, fmt, ap);

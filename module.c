@@ -38,9 +38,9 @@
 static void* modulesymbol;
 static void* modulessymbol;
 
-static functioncast_t
+static functioncast_type
 functioncastx(void*generic) {
-    functioncast_t* function = (functioncast_t*)&generic;
+    functioncast_type* function = (functioncast_type*)&generic;
     return *function;
 }
 

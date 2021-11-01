@@ -32,12 +32,12 @@
 
 extern char *argv0;
 
-pid_t daemonize(char *directory);
+extern pid_t daemonize(char *directory);
 
-int droppriviledges(char *username, char* groupname);
+extern int droppriviledges(char *username, char* groupname);
 
-pid_t checkpidfile(const char* pidfile);
+extern pid_t checkpidfile(const char* pidfile);
 
-int writepidfile(const char* pidfile, pid_t pid);
+extern int writepidfile(const char* pidfile, pid_t pid);
 
 #endif

@@ -62,39 +62,39 @@ extern logger_ctx_type logger_noctx;
 extern logger_ctx_type logger_ctx;
 extern logger_cls_type logger_cls;
 
-void logger_initialize(const char* programname);
-void logger_resetup(logger_cls_type* cls);
-void logger_configurecls(const char* name, logger_lvl_type minlvl, logger_procedure proc);
-logger_result_type logger_log_syslog(const logger_cls_type* cls, const logger_ctx_type ctx, const logger_lvl_type lvl, const char* format, va_list ap);
-logger_result_type logger_log_stderr(const logger_cls_type* cls, const logger_ctx_type ctx, const logger_lvl_type lvl, const char* format, va_list ap);
-logger_result_type logger_log_stdout(const logger_cls_type* cls, const logger_ctx_type ctx, const logger_lvl_type lvl, const char* format, va_list ap);
+extern void logger_initialize(const char* programname);
+extern void logger_resetup(logger_cls_type* cls);
+extern void logger_configurecls(const char* name, logger_lvl_type minlvl, logger_procedure proc);
+extern logger_result_type logger_log_syslog(const logger_cls_type* cls, const logger_ctx_type ctx, const logger_lvl_type lvl, const char* format, va_list ap);
+extern logger_result_type logger_log_stderr(const logger_cls_type* cls, const logger_ctx_type ctx, const logger_lvl_type lvl, const char* format, va_list ap);
+extern logger_result_type logger_log_stdout(const logger_cls_type* cls, const logger_ctx_type ctx, const logger_lvl_type lvl, const char* format, va_list ap);
 
-logger_ctx_type logger_newcontext(void);
-void logger_destroycontext(logger_ctx_type);
-void logger_setcontext(logger_ctx_type);
-void logger_pushcontext(logger_ctx_type);
-void logger_popcontext(void);
-void logger_clearcontext(void);
-void logger_putcontext(logger_ctx_type, const char* key, const char* value);
-const char* logger_getcontext(logger_ctx_type);
+extern logger_ctx_type logger_newcontext(void);
+extern void logger_destroycontext(logger_ctx_type);
+extern void logger_setcontext(logger_ctx_type);
+extern void logger_pushcontext(logger_ctx_type);
+extern void logger_popcontext(void);
+extern void logger_clearcontext(void);
+extern void logger_putcontext(logger_ctx_type, const char* key, const char* value);
+extern const char* logger_getcontext(logger_ctx_type);
 
-int logger_enabled(logger_cls_type* cls, logger_ctx_type ctx, logger_lvl_type lvl);
+extern int logger_enabled(logger_cls_type* cls, logger_ctx_type ctx, logger_lvl_type lvl);
 
-void
+extern void
 logger_messageinternal(logger_cls_type* cls, logger_ctx_type ctx, logger_lvl_type lvl, const char* fmt,...)
 #ifdef HAVE___ATTRIBUTE__
      __attribute__ ((format (printf, 4, 5)))
 #endif
 ;
 
-void
+extern void
 logger_message(logger_cls_type* cls, logger_ctx_type ctx, logger_lvl_type lvl, const char* fmt,...)
 #ifdef HAVE___ATTRIBUTE__
      __attribute__ ((format (printf, 4, 5)))
 #endif
 ;
 
-int logger_mark_performance(const char* message);
+extern int logger_mark_performance(const char* message);
 
 #define logger_messagex(CLS,CTX,LVL,FMT,...) \
     do { \

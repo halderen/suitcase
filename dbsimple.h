@@ -62,20 +62,20 @@ struct dbsimple_definition {
     } implementation;
 };
 
-int dbsimple_initialize(void);
-int dbsimple_finalize(void);
-int dbsimple_openconnection(char* location,
+extern int dbsimple_initialize(void);
+extern int dbsimple_finalize(void);
+extern int dbsimple_openconnection(char* location,
                             int nqueries, const char* const ** queries,
                             int ndefinitions, struct dbsimple_definition** definitions,
                             dbsimple_connection_type* connectionPtr);
-int dbsimple_closeconnection(dbsimple_connection_type);
-int dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionPtr);
-int dbsimple_closesession(dbsimple_session_type);
-int dbsimple_sync(dbsimple_session_type, const char* const** query, void* data);
-void* dbsimple_fetch(dbsimple_session_type, const char* const** model, ...);
+extern int dbsimple_closeconnection(dbsimple_connection_type);
+extern int dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionPtr);
+extern int dbsimple_closesession(dbsimple_session_type);
+extern int dbsimple_sync(dbsimple_session_type, const char* const** query, void* data);
+extern void* dbsimple_fetch(dbsimple_session_type, const char* const** model, ...);
 
-int dbsimple_commit(dbsimple_session_type);
-void dbsimple_dirty(dbsimple_session_type, void *ptr);
-void dbsimple_delete(dbsimple_session_type, void *ptr);
+extern int dbsimple_commit(dbsimple_session_type);
+extern void dbsimple_dirty(dbsimple_session_type, void *ptr);
+extern void dbsimple_delete(dbsimple_session_type, void *ptr);
 
 #endif
