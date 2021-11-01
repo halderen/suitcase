@@ -22,6 +22,11 @@ static settings_handle defaulthandle = NULL;
 
 typedef int (*namedtranslatetype)(const char*,long*resultvalue);
 
+struct settings_struct {
+    yaml_document_t* document;
+    yaml_node_t* root;
+};
+
 static yaml_node_t*
 getnodebyname(yaml_document_t *document, yaml_node_t *node, const char* arg, size_t len)
 {
@@ -222,15 +227,14 @@ parsefuncnamed(void* user, const char* str, void* resultvalue)
 
 
 static int
-parsescalar(yaml_document_t *document, size_t resultsize, void* resultvalue, const void* defaultvalue, int (*parsefunc)(void*,const char*,void*), void* parsedata, const char* fmt, va_list ap)
+parsescalar(yaml_document_t *document, yaml_node_t* root, size_t resultsize, void* resultvalue, const void* defaultvalue,
+            int (*parsefunc)(void*,const char*,void*), void* parsedata, const char* fmt, va_list ap)
 {
     size_t len;
     const char* last = "unknown";
     const char* str;
     int result;
-    yaml_node_t* root;
     yaml_node_t* node;
-    root = (document ? yaml_document_get_root_node(document) : NULL);
     node = parselocate(document, root, fmt, ap, &last);
     if (node) {
         if (node->type == YAML_SCALAR_NODE) {
@@ -272,14 +276,12 @@ parsescalar(yaml_document_t *document, size_t resultsize, void* resultvalue, con
 }
 
 static int
-parsecompound(yaml_document_t *document, int* resultvalue, const char* fmt, va_list ap)
+parsecompound(yaml_document_t *document, yaml_node_t* root, int* resultvalue, const char* fmt, va_list ap)
 {
     int count;
     const char* last = "unknown";
-    yaml_node_t* root;
     yaml_node_t* node;
     yaml_node_item_t* nodeitem;
-    root = (document ? yaml_document_get_root_node(document) : NULL);
     node = parselocate(document, root, fmt, ap, &last);
     if (node) {
         count = 0;
@@ -303,13 +305,14 @@ settings_access(settings_handle* handleptr, int basefd, const char* filename)
     yaml_document_t* document;
     if(handleptr == NULL) {
         if(defaulthandle) {
-            yaml_document_delete((yaml_document_t*)defaulthandle);
+            yaml_document_delete(defaulthandle->document);
+            free((void*)defaulthandle->document);
             free((void*)defaulthandle);
             defaulthandle = NULL;
         }
         handleptr = &defaulthandle;
-    } else if(filename == NULL && *handleptr == NULL) {
-        yaml_document_delete((yaml_document_t*)*handleptr);
+    } else if(filename == NULL && *handleptr != NULL) {
+        yaml_document_delete((*handleptr)->document);
     }
     
     yaml_parser_initialize(&parser);
@@ -322,7 +325,12 @@ settings_access(settings_handle* handleptr, int basefd, const char* filename)
     if(fd >= 0 && input) {
         yaml_parser_set_input_file(&parser, input);
         document = malloc(sizeof(yaml_document_t));
-        yaml_parser_load(&parser, document);
+        if(!yaml_parser_load(&parser, document)) {
+            yaml_document_delete(document);
+            document = NULL;
+            returncode = -1;
+        } else
+            returncode = 0;
         yaml_parser_delete(&parser);
         fclose(input); /* this will also close the file descriptor */
         returncode = 0;
@@ -330,8 +338,28 @@ settings_access(settings_handle* handleptr, int basefd, const char* filename)
         document = NULL;
         returncode = -1;
     }
-    *handleptr = document;
+    *handleptr = malloc(sizeof(struct settings_struct));
+    (*handleptr)->document = document;
+    (*handleptr)->root = yaml_document_get_root_node(document);
     return returncode;
+}
+
+int
+settings_setcontext(settings_handle handle, const char* fmt, ...)
+{
+    const char* last = "unknown";
+    yaml_node_t* node;
+    va_list ap;
+    va_start(ap, fmt);
+    handle->root = yaml_document_get_root_node(handle->document);
+    node = parselocate(handle->document, handle->root, fmt, ap, &last);
+    va_end(ap);
+    if(node && node->type != YAML_SCALAR_NODE) {
+        handle->root = node;
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 int
@@ -339,10 +367,10 @@ settings_getstring(settings_handle handle, char** resultvalue, const char* defau
 {
     int rc;
     va_list ap;
-    yaml_document_t* document = (handle ? handle : defaulthandle);
+    handle = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
     *resultvalue = NULL;
-    rc = parsescalar(document, sizeof(char*), resultvalue, NULL, parsefuncstring, NULL, fmt, ap);
+    rc = parsescalar(handle->document, handle->root, sizeof(char*), resultvalue, NULL, parsefuncstring, NULL, fmt, ap);
     if(*resultvalue == NULL && defaultvalue)
         *resultvalue = strdup(defaultvalue);
     va_end(ap);
@@ -354,9 +382,9 @@ settings_getlong(settings_handle handle, long* resultvalue, const long* defaultv
 {
     int rc;
     va_list ap;
-    yaml_document_t* document = (handle ? handle : defaulthandle);
+    handle = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefunclong, NULL, fmt, ap);
+    rc = parsescalar(handle->document, handle->root, sizeof(long), resultvalue, defaultvalue, parsefunclong, NULL, fmt, ap);
     va_end(ap);
     return rc;
 }
@@ -366,12 +394,12 @@ settings_getenum(settings_handle handle, int* resultvalue, const int* defaultval
 {
     int rc;
     va_list ap;
-    yaml_document_t* document = (handle ? handle : defaulthandle);
     struct parsefuncenum enummapping;
     enummapping.enumstrings = enums;
     enummapping.enumvalues = NULL;
+    handle = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefuncenum, &enummapping, fmt, ap);
+    rc = parsescalar(handle->document, handle->root, sizeof(long), resultvalue, defaultvalue, parsefuncenum, &enummapping, fmt, ap);
     va_end(ap);
     return rc;
 }
@@ -381,12 +409,12 @@ settings_getenum2(settings_handle handle, int* resultvalue, const int* defaultva
 {
     int rc;
     va_list ap;
-    yaml_document_t* document = (handle ? handle : defaulthandle);
     struct parsefuncenum enummapping;
     enummapping.enumstrings = enumstrings;
     enummapping.enumvalues = enumvalues;
+    handle = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefuncenum, &enummapping, fmt, ap);
+    rc = parsescalar(handle->document, handle->root, sizeof(long), resultvalue, defaultvalue, parsefuncenum, &enummapping, fmt, ap);
     va_end(ap);
     return rc;
 }
@@ -396,9 +424,9 @@ settings_getcompound(settings_handle handle, int* resultvalue, const char* fmt, 
 {
     int rc;
     va_list ap;
-    yaml_document_t* document = (handle ? handle : defaulthandle);
+    handle = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsecompound(document, resultvalue, fmt, ap);
+    rc = parsecompound(handle->document, handle->root, resultvalue, fmt, ap);
     va_end(ap);
     return rc;
 }
@@ -408,9 +436,9 @@ settings_getcount(settings_handle handle, long* resultvalue, const long* default
 {
     int rc;
     va_list ap;
-    yaml_document_t* document = (handle ? handle : defaulthandle);
+    handle = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefunccount, NULL, fmt, ap);
+    rc = parsescalar(handle->document, handle->root, sizeof(long), resultvalue, defaultvalue, parsefunccount, NULL, fmt, ap);
     va_end(ap);
     return rc;
 }
@@ -421,9 +449,9 @@ settings_getnamed(settings_handle handle, long* resultvalue, const long* default
     int rc;
     va_list ap;
     functioncast_t funcptr = (functioncast_t)translate;
-    yaml_document_t* document = (handle ? handle : defaulthandle);
+    handle = (handle ? handle : defaulthandle);
     va_start(ap, fmt);
-    rc = parsescalar(document, sizeof(long), resultvalue, defaultvalue, parsefuncnamed, &funcptr, fmt, ap);
+    rc = parsescalar(handle->document, handle->root, sizeof(long), resultvalue, defaultvalue, parsefuncnamed, &funcptr, fmt, ap);
     va_end(ap);
     return rc;
 }

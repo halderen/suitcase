@@ -1,7 +1,8 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-typedef void* settings_handle;
+struct settings_struct;
+typedef struct settings_struct* settings_handle;
 
 int settings_access(settings_handle*, int basefd, const char* filename);
 int settings_getlong(settings_handle, long* resultvalue, const long* defaultvalue, const char* fmt,...);
