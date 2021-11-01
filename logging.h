@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 NLNet Labs.
+ * Copyright (c) 2021 A.W. van Halderen
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

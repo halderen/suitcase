@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018 NLNet Labs.
+ * Copyright (c) 2021 A.W. van Halderen
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,6 @@
 #ifndef _GNU_SOURCE
 #define __USE_GNU
 #endif
-
 #include "config.h"
 
 #include <stdio.h>
