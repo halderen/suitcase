@@ -80,7 +80,10 @@ deleteobject(struct object* object, __attribute__((unused)) dbsimple_session_typ
     if(object->data) {
         for(int i=0; i<object->type->nfields; i++) {
             switch (object->type->fields[i].type) {
-                case dbsimple_INTEGER:
+                case dbsimple_INT:
+                case dbsimple_UINT:
+                case dbsimple_LONGINT:
+                case dbsimple_ULONGINT:
                 case dbsimple_STRING:
                 case dbsimple_REFERENCE:
                 case dbsimple_BACKREFERENCE:
@@ -143,7 +146,10 @@ dbsimple__committraverse(struct dbsimple_sessionbase* session, struct object* ob
     }
     for(int i=0; i<object->type->nfields; i++) {
         switch(object->type->fields[i].type) {
-            case dbsimple_INTEGER:
+            case dbsimple_INT:
+            case dbsimple_UINT:
+            case dbsimple_LONGINT:
+            case dbsimple_ULONGINT:
             case dbsimple_STRING:
                 break;
             case dbsimple_REFERENCE:
@@ -179,7 +185,7 @@ dbsimple__committraverse(struct dbsimple_sessionbase* session, struct object* ob
 }
 
 struct object*
-dbsimple__getobject(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, int id, const char* name)
+dbsimple__getobject(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, long id, const char* name)
 {
     tree_reference_type cursor;
     struct object lookup;
@@ -215,7 +221,7 @@ subscribereference(struct dbsimple_field* field, struct object* source, struct o
 }
 
 void
-dbsimple__assignreference(struct dbsimple_sessionbase* session, struct dbsimple_field* field, int id, const char* name, struct object* source)
+dbsimple__assignreference(struct dbsimple_sessionbase* session, struct dbsimple_field* field, long id, const char* name, struct object* source)
 {
     struct object* targetoject;
     void** destination = (void**)&(source->data[field->fieldoffset]);
@@ -296,6 +302,8 @@ commitobject(struct object* object, struct dbsimple_sessionbase* session)
                 break;
             case OBJREMOVED:
                 break;
+            case OBJUNKNOWN:
+                abort();
             default:
                 abort();
         }

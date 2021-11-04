@@ -44,7 +44,7 @@
 #include "dbsimplebase.h"
 
 static int initialize(void);
-static void reportError(sqlite3* handle, char* message);
+static void reportError(sqlite3* handle, const char* message);
 
 #ifndef HAVE_SQLITE3_H
 
@@ -231,7 +231,7 @@ static int initialize(void)
     return 0;
 }
 
-static void reportError(sqlite3* handle, char* message)
+static void reportError(sqlite3* handle, const char* message)
 {
     fprintf(stderr, "SQLERROR%s%s: %s (%d, %d)\n", ((message&&*message)?" ":""), message, sqlite3_errmsg(handle), sqlite3_errcode(handle), sqlite3_extended_errcode(handle));
 }
@@ -285,10 +285,11 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
 {
     int status;
     int column;
-    int targetkeyid;
+    long targetkeyid;
     const char* targetkeystr;
     struct object* object = NULL;
     int intvalue;
+    long longvalue;
     char* cstrvalue;
 
     sqlite3* handle = session->connection->handle;
@@ -301,7 +302,8 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
                 column = 0;
                 for(int i = 0; i<def->nfields; i++) {
                     switch(def->fields[i].type) {
-                        case dbsimple_INTEGER:
+                        case dbsimple_INT:
+                        case dbsimple_UINT:
                             intvalue = sqlite3_column_int(stmt, column++);
                             if (i==0) {
                                 object = dbsimple__getobject(&session->basesession, def, intvalue, NULL);
@@ -311,6 +313,18 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
                             }
                             if(def->fields[i].fieldoffset >= 0)
                                 *(int*)&(object->data[def->fields[i].fieldoffset]) = intvalue;
+                            break;
+                        case dbsimple_LONGINT:
+                        case dbsimple_ULONGINT:
+                            longvalue = sqlite3_column_int64(stmt, column++);
+                            if (i==0) {
+                                object = dbsimple__getobject(&session->basesession, def, longvalue, NULL);
+                                object->state = OBJCLEAN;
+                            } else if(i==1 && (def->flags & dbsimple_FLAG_HASREVISION)) {
+                                object->revision = longvalue;
+                            }
+                            if(def->fields[i].fieldoffset >= 0)
+                                *(long*)&(object->data[def->fields[i].fieldoffset]) = longvalue;
                             break;
                         case dbsimple_STRING:
                             cstrvalue = strdup((char*)sqlite3_column_text(stmt, column++));
@@ -327,8 +341,13 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
                             if(sqlite3_column_type(stmt, column) != SQLITE_NULL) {
                                 if((def->fields[i].def->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
                                     switch(def->fields[i].def->fields[0].type) {
-                                        case dbsimple_INTEGER:
+                                        case dbsimple_INT:
+                                        case dbsimple_UINT:
                                             targetkeyid = sqlite3_column_int(stmt, column++);
+                                            break;
+                                        case dbsimple_LONGINT:
+                                        case dbsimple_ULONGINT:
+                                            targetkeyid = sqlite3_column_int64(stmt, column++);
                                             break;
                                         case dbsimple_STRING:
                                             targetkeystr = strdup((char*)sqlite3_column_text(stmt, column++));
@@ -350,8 +369,13 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
                             if((def->fields[i].def->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
                                 if(sqlite3_column_type(stmt, column) != SQLITE_NULL) {
                                     switch(def->fields[i].def->fields[0].type) {
-                                        case dbsimple_INTEGER:
+                                        case dbsimple_INT:
+                                        case dbsimple_UINT:
                                             targetkeyid = sqlite3_column_int(stmt, column++);
+                                            break;
+                                        case dbsimple_LONGINT:
+                                        case dbsimple_ULONGINT:
+                                            targetkeyid = sqlite3_column_int64(stmt, column++);
                                             break;
                                         case dbsimple_STRING:
                                             targetkeystr = strdup((char*)sqlite3_column_text(stmt, column++));
@@ -395,6 +419,7 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
 {
     int column = 0;
     int intvalue;
+    long longvalue;
     const char* cstrvalue;
     struct object* targetobj;
     void* targetptr;
@@ -417,7 +442,8 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
             field = &object->type->fields[i];
         }
         switch(field->type) {
-            case dbsimple_INTEGER:
+            case dbsimple_INT:
+            case dbsimple_UINT:
                 switch(i) {
                     case 0:
                         intvalue = object->keyid;
@@ -433,6 +459,24 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
                         intvalue = *(int*)&(object->data[field->fieldoffset]);
                 }
                 sqlite3_bind_int(stmt, ++column, intvalue);
+                break;
+            case dbsimple_LONGINT:
+            case dbsimple_ULONGINT:
+                switch(i) {
+                    case 0:
+                        longvalue = object->keyid;
+                        break;
+                    case 1:
+                        if(object->type->flags & dbsimple_FLAG_HASREVISION) {
+                            longvalue = object->revision;
+                            break;
+                        }
+                        /* else deliberate fall through */
+                        // fall through
+                    default:
+                        longvalue = *(long*)&(object->data[field->fieldoffset]);
+                }
+                sqlite3_bind_int64(stmt, ++column, longvalue);
                 break;
             case dbsimple_STRING:
                 switch(i) {
@@ -675,7 +719,7 @@ fetchdata(dbsimple_session_type session, const char* const** query, __attribute_
             stmts = session->stmts[stmtindex] = malloc(sizeof (sqlite3_stmt*) * (count+1));
             for(int i = 0; i<count; i++) {
                 if(SQLITE_OK != (errorCode = sqlite3_prepare_v2(session->handle, (*query)[i], strlen((*query)[i])+1, &stmts[i], NULL))) {
-                    reportError(session->handle, "");
+                    reportError(session->handle, (*query)[i]);
                     while(i-- >0) {
                         sqlite3_finalize(stmts[i]);
                     }

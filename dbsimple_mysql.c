@@ -107,7 +107,10 @@ dostatement(dbsimple_session_type session, MYSQL_STMT* stmt, struct object* obje
             field = &object->type->fields[i];
         }
         switch(field->type) {
-            case dbsimple_INTEGER:
+            case dbsimple_INT:
+            case dbsimple_UINT:
+            case dbsimple_LONGINT:
+            case dbsimple_ULONGINT:
                 valuetype = MYSQL_TYPE_LONG;
                 switch(i) {
                     case 0:
@@ -147,7 +150,10 @@ dostatement(dbsimple_session_type session, MYSQL_STMT* stmt, struct object* obje
                     }
                 } else {
                     switch(field->def->fields[0].type) {
-                        case dbsimple_INTEGER:
+                        case dbsimple_INT:
+                        case dbsimple_UINT:
+                        case dbsimple_LONGINT:
+                        case dbsimple_ULONGINT:
                             valuetype = MYSQL_TYPE_LONG;
                             valueptr = NULL;
                             break;
@@ -471,7 +477,10 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
     for(int i=0; i<def->nfields; i++) {
         bind[column].is_null = &nullvalues[column];
         switch(def->fields[i].type) {
-            case dbsimple_INTEGER:
+            case dbsimple_INT:
+            case dbsimple_UINT:
+            case dbsimple_LONGINT:
+            case dbsimple_ULONGINT:
                 bind[column].buffer  = &intvalues[column];
                 bind[column].buffer_type = MYSQL_TYPE_LONG;
                 column += 1;
@@ -488,7 +497,10 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
             case dbsimple_BACKREFERENCE:
                 if((def->fields[i].def->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
                     switch(def->fields[i].def->fields[0].type) {
-                        case dbsimple_INTEGER:
+                        case dbsimple_INT:
+                        case dbsimple_UINT:
+                        case dbsimple_LONGINT:
+                        case dbsimple_ULONGINT:
                             bind[column].buffer = &intvalues[column];
                             bind[column].buffer_type = MYSQL_TYPE_LONG;
                             break;
@@ -517,7 +529,10 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
         column = 0;
         for(int i = 0; i<def->nfields; i++) {
             switch(def->fields[i].type) {
-                case dbsimple_INTEGER:
+                case dbsimple_INT:
+                case dbsimple_UINT:
+                case dbsimple_LONGINT:
+                case dbsimple_ULONGINT:
                     intvalue = intvalues[column++];
                     if(i==0) {
                         object = dbsimple__getobject(&session->basesession, def, intvalue, NULL);
@@ -546,7 +561,10 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
                     } else {
                         if((def->fields[i].def->flags&dbsimple_FLAG_SINGLETON)!=dbsimple_FLAG_SINGLETON) {
                             switch(def->fields[i].def->fields[0].type) {
-                                case dbsimple_INTEGER:
+                                case dbsimple_INT:
+                                case dbsimple_UINT:
+                                case dbsimple_LONGINT:
+                                case dbsimple_ULONGINT:
                                     targetkeyid = intvalues[column++];
                                     break;
                                 case dbsimple_STRING:
@@ -566,7 +584,10 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
                     if((def->fields[i].def->flags&dbsimple_FLAG_SINGLETON)!=dbsimple_FLAG_SINGLETON) {
                         if(nullvalues[column]) {
                             switch(def->fields[i].def->fields[0].type) {
-                                case dbsimple_INTEGER:
+                                case dbsimple_INT:
+                                case dbsimple_UINT:
+                                case dbsimple_LONGINT:
+                                case dbsimple_ULONGINT:
                                     targetkeyid = intvalues[column++];
                                     break;
                                 case dbsimple_STRING:

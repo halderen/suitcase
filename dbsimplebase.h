@@ -38,7 +38,7 @@ struct backpatch;
 struct object {
     struct dbsimple_definition* type;
     char* data;
-    int keyid;
+    long keyid;
     const char* keyname;
     int revision;
     enum objectstate state;
@@ -90,11 +90,11 @@ struct dbsimple_module {
 extern int dbsimple_registermodule(const struct dbsimple_module* bindings);
 
 extern void* dbsimple__fetch(struct dbsimple_sessionbase* session, int ndefinitions, struct dbsimple_definition** definitions);
-extern void dbsimple__assignreference(struct dbsimple_sessionbase* session, struct dbsimple_field* field, int id, const char* name, struct object* source);
+extern void dbsimple__assignreference(struct dbsimple_sessionbase* session, struct dbsimple_field* field, long id, const char* name, struct object* source);
 extern void dbsimple__assignbackreference(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, int id, const char* name, struct dbsimple_field* field, struct object* object);
 extern void dbsimple__commit(struct dbsimple_sessionbase* session);
 extern void dbsimple__committraverse(struct dbsimple_sessionbase* session, struct object* object);
 extern struct object* dbsimple__referencebyptr(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, void* ptr);
-extern struct object* dbsimple__getobject(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, int id, const char* name);
+extern struct object* dbsimple__getobject(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, long id, const char* name);
 
 #endif

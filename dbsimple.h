@@ -32,12 +32,17 @@ typedef struct dbsimple_connection_struct* dbsimple_connection_type;
 struct dbsimple_session_struct;
 typedef struct dbsimple_session_struct* dbsimple_session_type;
 
-#define dbsimple_INTEGER          0
-#define dbsimple_STRING           1
-#define dbsimple_REFERENCE        2
-#define dbsimple_BACKREFERENCE    3
-#define dbsimple_MASTERREFERENCES 4
-#define dbsimple_OPENREFERENCES   5
+#define dbsimple__UNSIGNED        0x100
+#define dbsimple_UNDEFINED        0
+#define dbsimple_REFERENCE        1
+#define dbsimple_BACKREFERENCE    2
+#define dbsimple_MASTERREFERENCES 3
+#define dbsimple_OPENREFERENCES   4
+#define dbsimple_STRING           5
+#define dbsimple_INT              6
+#define dbsimple_LONGINT          7
+#define dbsimple_UINT             (dbsimple_INT|dbsimple__UNSIGNED)
+#define dbsimple_ULONGINT         (dbsimple_LONGINT|dbsimple__UNSIGNED)
 
 struct dbsimple_field {
     int type;
