@@ -63,3 +63,33 @@ rnd(void)
   return  (!cf_error_status ? 0 : foo);
 }
 #endif
+
+int
+alloc(void** ptr, size_t size, int* countptr, int newcount)
+{
+    void* newptr;
+    if(*ptr == NULL) {
+	*ptr = malloc(size * newcount);
+	if(*ptr) {
+	    if(countptr)
+		*countptr = newcount;
+            return 0;
+	} else {
+	    if(countptr)
+		*countptr = 0;
+            return -1;
+	}
+    } else {
+	newptr = realloc(*ptr, size * newcount);
+	if(newptr) {
+	    if(countptr) {
+	        if(newcount > *countptr)
+                    memset(newptr, 0, size * (newcount - *countptr));
+	        *countptr = newcount;
+	    }
+	    *ptr = newptr;
+	    return 0;
+	} else
+            return -1;
+    }
+}

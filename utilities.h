@@ -101,4 +101,6 @@ typedef void (*voidfunc)(void);
 extern int clamp(int value, int lbnd, int ubnd);
 extern unsigned long long int rnd(void);
 
+extern int alloc(void** ptr, size_t size, int* countptr, int newcount);
+
 #endif
