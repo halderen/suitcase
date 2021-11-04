@@ -31,61 +31,61 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#ifdef HAVE_LUALIB_H
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
+#ifdef HAVE_TCL_H
+#include <tcl.h>
 #endif
 #include "utilities.h"
 #include "settings.h"
 #include "modules.h"
 #include "logging.h"
-#include "examplelua.h"
+#include "executetcl.h"
 
-static int
-suitcasefunc(lua_State* l)
-{
-    lua_pushnumber(l, 0.0);
-    lua_pushinteger(l, 0);
-    double arg = luaL_checknumber(l, 1);
-    (void)arg;
-    return 1; /* number of results */
-}
-
-static const struct luaL_reg luareg[] = {
-    { "suitcasefunc", suitcasefunc },
-    { NULL, NULL }  /* sentinel */
+struct userdata {
+    void* ptr;
 };
 
 int
-executelua(char* command)
+suitcaseCmd(ClientData clientData, Tcl_Interp* interp, int argc, char* argv[])
 {
+    if(!strcmp(argv[1], "configure")) {
+        return TCL_OK;
+    }
+    Tcl_SetResult(interp, "wrong # arguments", TCL_STATIC);
+    Tcl_SetResult(interp, "bad # arguments", TCL_STATIC);
+    Tcl_SetResult(interp, "bad command", TCL_STATIC);
+    return TCL_ERROR;
+}
+
+void
+suitcaseDeleteProc(ClientData clientData)
+{
+    free(clientData);
+}
+
+int
+appInit(Tcl_Interp* interp)
+{
+    struct userdata* userdata;
+    if(Tcl_Init(interp) == TCL_ERROR)
+        return TCL_ERROR;
+    userdata = malloc(sizeof(userdata));
+    userdata->ptr = NULL;
+    if(Tcl_CreateCommand(interp, "suitcase", &suitcaseCmd, userdata, &suitcaseDeleteProc) == NULL) {
+        return TCL_OK;
+    }
+}
+
+int
+executetcl(char* command, va_list ap)
+{
+    int argc = 1;
+    char *argv[1] = { command };
     int rcode;
-    lua_State* l = NULL;
-    l = lua_open();
-    luaL_openlibs(l);
-    luaL_openlib(l, "suitcase", luareg, 0);
-
-    lua_setglobal(l, "suitcase");
-
-    rcode = luaL_loadbuffer(l, command, strlen(command), "line");
-    if(rcode)
-        goto failure;
-    lua_pcall(l, 0, 0, 0);
-    if(rcode)
-        goto failure;
-    lua_getglobal(l, "suitcase");
-    if(!lua_isnumber(l, -1))
-        fprintf(stderr, "%s\n", "should be number");
-    lua_tonumber(l, -1);
-    lua_close(l);
+    Tcl_SetStartupScript(NULL, NULL);
+    Tcl_GlobalEval(interp, command);
+    Tcl_Main(argc, argv, appInit);
     return 0;
 
   failure:
-    if(l) {
-        fprintf(stderr, "%s", lua_tostring(l, -1));
-        lua_pop(l, 1);
-        lua_close(l);
-    }
     return 1;
 }

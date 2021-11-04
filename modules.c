@@ -43,13 +43,22 @@ struct module_instance {
 
 struct module_instance* instances = NULL;
 
-static struct library_struct library = { NULL, "basic", "suitcase" };
+struct mylibrary_struct {
+    struct library_struct* next;
+    char* type;
+    char* name;
+    struct {
+        char* interface;
+        void* function;
+    } interfaces[1];
+};
+static struct mylibrary_struct library = { NULL, "basic", "suitcase", { { NULL, NULL } } };
 
 __attribute__((constructor))
 void
 init(void)
 {
-    library_register(&library);
+    library_register((struct library_struct*)&library);
 }
 
 __attribute__((destructor))
@@ -131,4 +140,13 @@ modules_lookup(char* interface, char** name, const void** ptr)
     }
     name = NULL;
     return 0;
+}
+
+void
+modules_addlibraries(struct library_struct* library)
+{
+    while(library) {
+        modules(&(library->type));
+        library = library->next;
+    }
 }

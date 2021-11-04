@@ -19,7 +19,8 @@ suitcase_LDFLAGS = @MYSQL_LDFLAGS@ @SQLITE3_LDFLAGS@
 suitcase_LDADD = schema_mysql.o schema_sqlite3.o libsuitcase.la $(LIBCURL) -ldl @PTHREAD_LIBS@
 
 check_PROGRAMS = test
-lib_LTLIBRARIES = libsuitcase.la libmoduledbmysql.la
+lib_LTLIBRARIES = libsuitcase.la libmoduledbmysql.la libmoduleexectcl.la
+
 bin_PROGRAMS = suitcase
 
 install-exec-hook:
@@ -41,9 +42,11 @@ libsuitcase_la_SOURCES += utilities.c utilities.h
 libsuitcase_la_SOURCES += tree.c tree.h
 libsuitcase_la_SOURCES += settings.c settings.h
 libsuitcase_la_SOURCES += dbsimple.h dbsimple.c dbsimplebase.h dbsimplebase.c
-suitcase_SOURCES  = main.c exampledb.c exampledb.h examplelua.c examplelua.h
+suitcase_SOURCES  = main.c exampledb.c exampledb.h
+suitcase_SOURCES += executelua.c executelua.h
 suitcase_SOURCES += commandline.c commandline.h
 suitcase_SOURCES += daemonize.c daemonize.h
+suitcase_SOURCES += execute.c execute.h
 suitcase_SOURCES += sqlstmts_sqlite3.inc
 
 if INCLUDE_SQLITE3
@@ -58,6 +61,11 @@ suitcase_LDFLAGS += @LUA_LIB@
 if HAVE_MYSQL
 libmoduledbmysql_la_SOURCES = moduledbmysql.c dbsimple_mysql.c schema_mysql.h
 libmoduledbmysql_la_LIDADD  = libsuitcase.la @MYSQL_LDFLAGS@
+endif
+
+if HAVE_TCL
+libmoduleexectcl_la_SOURCES = executetcl.c executetcl.h
+libmoduleexectcl_la_LIDADD  = libsuitcase.la -ltcl
 endif
 
 test_SOURCES = tests/suitcasetest.c schema_mysql.h

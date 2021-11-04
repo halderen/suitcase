@@ -24,9 +24,44 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EXAMPLELUA_H
-#define EXAMPLELUA_H
+#include "config.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include "logging.h"
+#include "settings.h"
+#include "modules.h"
+#include "utilities.h"
+#include "execute.h"
 
-extern int executelua(char* command);
-
-#endif
+int
+execute(settings_handle commands, char* cmdname, ...)
+{
+    va_list ap;
+    char* modname;
+    char* cmdsource;
+    char* using;
+    int found;
+    const void* table;
+    int rcode = 0; 
+    int (*func)(char*,va_list) = NULL;
+    
+    va_start(ap, cmdname);
+    settings_getstring(commands, &using, NULL, "%s.using", cmdname);
+    if(using == NULL) {
+        return -1;
+    }
+    for(found=modules_lookup("execute",&modname,&table); found; found=modules_lookup(NULL,&modname,&table)) {
+        if(!strcmp(modname,using)) {
+            func = (int(*)()) functioncast(*(void**)table);
+            break;
+        }
+    }
+    free(using);
+    settings_getstring(commands, &cmdsource, NULL, "%s.command", cmdname);
+    rcode = func(cmdsource, ap);
+    va_end(ap);
+    free(cmdsource);
+    return rcode;
+}

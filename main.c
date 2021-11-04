@@ -42,7 +42,8 @@
 #include "commandline.h"
 #include "dbsimple.h"
 #include "exampledb.h"
-#include "examplelua.h"
+#include "executelua.h"
+#include "executetcl.h"
 
 struct library_struct* libraries = NULL;
 
@@ -159,6 +160,7 @@ main(int argc, char* argv[])
         fprintf(stderr,"library\n");
         fprintf(stderr,"library \"%s\"\n",library->name);
     }
+    modules_addlibraries(libraries);
 
     /* setup database layer */
     dbsimple_initialize();
@@ -170,16 +172,9 @@ main(int argc, char* argv[])
     settings_getstring(cfghandle, &connectstr, NULL, "storage.datasource");
     if(connectstr && strcmp(connectstr,"")) {
         example_dbsetup(connectstr);
+        example_dbtest();
     }
     free(connectstr);
-
-    /* LUA support */
-    char* command;
-    settings_getstring(cfghandle, &command, NULL, "command");
-    if(command) {
-        executelua(command);
-        free(command);
-    }
-    
+   
     return 0;
 }
