@@ -39,6 +39,7 @@
 #include <sstream>
 #endif
 #include <stdarg.h>
+#include <stddef.h>
 
 #if !defined(__GNUC__) || __GNUC__ < 2 || \
     (__GNUC__ == 2 && __GNUC_MINOR__ < 7) ||\
@@ -98,9 +99,20 @@ extern functioncast_type functioncast(void*generic);
 
 typedef void (*voidfunc)(void);
 
+/**                
+ * Clamp an integer value between a lower and an upper bound.
+ *
+ * In effect a combination of a min() and max() call this function
+ * will return the value as long as it lies between the lower and
+ * upper bound.  If smaller (or equal) to the lower bound it will
+ * return the lower bound and likewise if larger or equal to the
+ * upper, the upper bound.  The result may be either lower or
+ * upper bound if the upper bound is smaller than the lower bound.
+ */
 extern int clamp(int value, int lbnd, int ubnd);
+
 extern unsigned long long int rnd(void);
 
-extern int alloc(void** ptr, size_t size, int* countptr, int newcount);
+extern int alloc(void* ptr, size_t size, int* countptr, int newcount);
 
 #endif

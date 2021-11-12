@@ -65,9 +65,10 @@ rnd(void)
 #endif
 
 int
-alloc(void** ptr, size_t size, int* countptr, int newcount)
+alloc(void* p, size_t size, int* countptr, int newcount)
 {
-    void* newptr;
+    char** ptr = (char**)p;
+    char* newptr;
     if(*ptr == NULL) {
 	*ptr = malloc(size * newcount);
 	if(*ptr) {
@@ -84,7 +85,7 @@ alloc(void** ptr, size_t size, int* countptr, int newcount)
 	if(newptr) {
 	    if(countptr) {
 	        if(newcount > *countptr)
-                    memset(newptr, 0, size * (newcount - *countptr));
+                    memset(&newptr[size*(*countptr)], 0, size * (newcount - *countptr));
 	        *countptr = newcount;
 	    }
 	    *ptr = newptr;
