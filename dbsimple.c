@@ -59,17 +59,11 @@ static const struct dbsimple_module** modules = NULL;
 int
 dbsimple_registermodule(const struct dbsimple_module* bindings)
 {
-    int nmodules2;
-    const struct dbsimple_module** modules2;
-    nmodules2 = nmodules + 1;
-    modules2 = realloc(modules, sizeof(struct dbsimple_module*) * nmodules2);
-    if(modules2) {
-        modules2[nmodules2 - 1] = bindings;
-        modules = modules2;
-        nmodules = nmodules2;
+    if(!alloc(&modules, sizeof(struct dbsimple_module*), &nmodules, nmodules + 1)) {
+        modules[nmodules - 1] = bindings;
+        return 0;
     } else
         return -1;
-    return 0;
 }
 
 int
@@ -140,6 +134,10 @@ dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_type*
 {
     int returnCode = 0;
     dbsimple_session_type session;
+    if(!connection) {
+        sessionPtr = NULL;
+        return -1;
+    }
     returnCode = connection->baseconnection.opensession(connection, sessionPtr);
     session = *sessionPtr;
     session->basesession.closesession  = connection->baseconnection.closesession;
@@ -163,7 +161,6 @@ int
 dbsimple_sync(dbsimple_session_type session, const char* const** query, void* data)
 {
     int returnCode = 0;
-    // stmtindex = query - session->connection->queries;
     returnCode = session->basesession.syncdata(session, query, data);
     return returnCode;
 }
@@ -174,7 +171,6 @@ dbsimple_fetch(dbsimple_session_type session, const char* const** query, ...)
     va_list args;
     void* returnValue;
     va_start(args, query);
-    // stmtindex = query - session->connection->queries;
     returnValue = session->basesession.fetchdata(session, query, args);
     va_end(args);
     return returnValue;

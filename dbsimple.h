@@ -27,6 +27,8 @@
 #ifndef DBSIMPLE_H
 #define DBSIMPLE_H
 
+#include <stddef.h>
+
 struct dbsimple_connection_struct;
 typedef struct dbsimple_connection_struct* dbsimple_connection_type;
 struct dbsimple_session_struct;
@@ -47,8 +49,8 @@ typedef struct dbsimple_session_struct* dbsimple_session_type;
 struct dbsimple_field {
     int type;
     struct dbsimple_definition* def;
-    off_t fieldoffset;
-    off_t countoffset;
+    size_t fieldoffset;
+    size_t countoffset;
 };
 
 #define dbsimple_FLAG_HASREVISION    0x0001
@@ -56,6 +58,7 @@ struct dbsimple_field {
 #define dbsimple_FLAG_EXPLICITREMOVE 0x0004
 #define dbsimple_FLAG_AUTOREMOVE     0x0008
 
+struct dbsimple_implementation;
 struct dbsimple_definition {
     size_t size;
     int flags;
@@ -82,5 +85,6 @@ extern void* dbsimple_fetch(dbsimple_session_type, const char* const** model, ..
 extern int dbsimple_commit(dbsimple_session_type);
 extern void dbsimple_dirty(dbsimple_session_type, void *ptr);
 extern void dbsimple_delete(dbsimple_session_type, void *ptr);
+extern void dbsimple_free(dbsimple_session_type);
 
 #endif

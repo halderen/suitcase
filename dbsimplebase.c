@@ -321,6 +321,15 @@ dbsimple__commit(struct dbsimple_sessionbase* session)
 }
 
 void
+dbsimple_free(dbsimple_session_type session)
+{
+    struct dbsimple_sessionbase* basesession = (struct dbsimple_sessionbase*)session;
+    tree_foreach(basesession->objectmap, (tree_visitor_type) deleteobject, (void*) session);
+    tree_destroy(basesession->objectmap);
+    tree_destroy(basesession->pointermap);
+}
+
+void
 dbsimple_delete(dbsimple_session_type session, void *ptr)
 {
     struct object lookup;
