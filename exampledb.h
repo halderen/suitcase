@@ -27,13 +27,14 @@
 #ifndef EXAMPLE_H
 #define EXAMPLE_H
 
-struct dbw_data {
+  struct dbw_data {
     struct dbw_policy** policies;
     int npolicies;
     struct dbw_zone** zones;
     int nzones;
 };
 
+#ifndef OPENDNSSEC_CONFIG_FILE
 struct dbw_policy {
     long id;
     int policykey_count;
@@ -181,5 +182,6 @@ struct dbw_key {
 
 extern int example_dbsetup(char* connectstr);
 extern int example_dbtest(void);
+#endif
 
 #endif

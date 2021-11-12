@@ -59,10 +59,16 @@ const char* const sqlstmts_mysql_default_[] = {
 
   NULL };
 
+const char* const sqlstmts_mysql_probe_[] = {
+  "SELECT 1",
+
+  NULL };
+
 const char* const* sqlstmts_mysql_array[] = {
   sqlstmts_mysql_qschema_,
   sqlstmts_mysql_qschema1_,
   sqlstmts_mysql_default_,
+  sqlstmts_mysql_probe_,
   sqlstmts_mysql_schema_,
   sqlstmts_mysql_schema1_,
   NULL 
@@ -71,5 +77,6 @@ const char* const* sqlstmts_mysql_array[] = {
 const char* const** sqlstmts_mysql_qschema = &sqlstmts_mysql_array[0];
 const char* const** sqlstmts_mysql_qschema1 = &sqlstmts_mysql_array[1];
 const char* const** sqlstmts_mysql_default = &sqlstmts_mysql_array[2];
-const char* const** sqlstmts_mysql_schema = &sqlstmts_mysql_array[3];
-const char* const** sqlstmts_mysql_schema1 = &sqlstmts_mysql_array[4];
+const char* const** sqlstmts_mysql_probe = &sqlstmts_mysql_array[3];
+const char* const** sqlstmts_mysql_schema = &sqlstmts_mysql_array[4];
+const char* const** sqlstmts_mysql_schema1 = &sqlstmts_mysql_array[5];

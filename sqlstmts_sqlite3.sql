@@ -258,3 +258,6 @@ INSERT OR REPLACE INTO keyDependency ( id, rev, fromKeyDataId, toKeyDataId, type
 VALUES ( ?, ?, ?, ?, ? );
 
 DELETE FROM keyDependency WHERE id = ? AND rev = ?;
+
+-- probe
+SELECT 1;

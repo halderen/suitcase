@@ -48,3 +48,6 @@ DELETE FROM policy WHERE id = ?;
 INSERT INTO zone ( id, revision, name, policy, parent ) VALUES ( ?, ?, ?, ?, ? );
 
 DELETE FROM zone WHERE id = ? AND revision = ?;
+
+-- probe
+SELECT 1;

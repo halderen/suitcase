@@ -24,7 +24,9 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef OPENDNSSEC_CONFIG_FILE
 #include "config.h"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,14 +38,17 @@
 #include "sqlstmts_sqlite3.inc"
 #include "sqlstmts_mysql.inc"
 
+#ifndef OPENDNSSEC_CONFIG_FILE
 static dbsimple_session_type session;
 static dbsimple_connection_type connection;
+#endif
 
 const char* const** sqlstmts_qschema;
 const char* const** sqlstmts_schema;
 const char* const** sqlstmts_qschema1;
 const char* const** sqlstmts_schema1;
 const char* const** sqlstmts_default;
+const char* const** sqlstmts_probe;
 
 
 struct dbsimple_definition dbw_datadefinition;
@@ -208,18 +213,20 @@ struct dbsimple_field dbw_keydependencyfields[] = {
     { dbsimple_UINT,           &dbw_keydependencydefinition, offsetof(struct dbw_keydependency, type),    -1 },
 };
 
-struct dbsimple_definition dbw_datadefinition =          { sizeof(struct dbw_data),          dbsimple_FLAG_SINGLETON,   sizeof(dbw_datafields)/sizeof(struct dbsimple_field),          dbw_datafields,   { 0 } };
-struct dbsimple_definition dbw_policydefinition =        { sizeof(struct dbw_policy),        dbsimple_FLAG_HASREVISION, sizeof(dbw_policyfields)/sizeof(struct dbsimple_field),        dbw_policyfields, { 0 } };
-struct dbsimple_definition dbw_policykeydefinition =     { sizeof(struct dbw_policykey),     dbsimple_FLAG_HASREVISION, sizeof(dbw_policykeyfields)/sizeof(struct dbsimple_field),     dbw_policykeyfields, { 0 } };
-struct dbsimple_definition dbw_hsmkeydefinition =        { sizeof(struct dbw_hsmkey),        dbsimple_FLAG_HASREVISION, sizeof(dbw_hsmkeyfields)/sizeof(struct dbsimple_field),        dbw_hsmkeyfields, { 0 } };
-struct dbsimple_definition dbw_zonedefinition =          { sizeof(struct dbw_zone),          dbsimple_FLAG_HASREVISION, sizeof(dbw_zonefields)/sizeof(struct dbsimple_field),          dbw_zonefields,     { 0 } };
-struct dbsimple_definition dbw_keydefinition =           { sizeof(struct dbw_key),           dbsimple_FLAG_HASREVISION, sizeof(dbw_keyfields)/sizeof(struct dbsimple_field),           dbw_keyfields,     { 0 } };
-struct dbsimple_definition dbw_keystatedefinition =      { sizeof(struct dbw_keystate),      dbsimple_FLAG_HASREVISION, sizeof(dbw_keystatefields)/sizeof(struct dbsimple_field),      dbw_keystatefields,     { 0 } };
-struct dbsimple_definition dbw_keydependencydefinition = { sizeof(struct dbw_keydependency), 0,                         sizeof(dbw_keydependencyfields)/sizeof(struct dbsimple_field), dbw_keydependencyfields,     { 0 } };
+struct dbsimple_definition dbw_datadefinition =          { sizeof(struct dbw_data),          dbsimple_FLAG_SINGLETON,   sizeof(dbw_datafields)/sizeof(struct dbsimple_field),          dbw_datafields };
+struct dbsimple_definition dbw_policydefinition =        { sizeof(struct dbw_policy),        dbsimple_FLAG_HASREVISION, sizeof(dbw_policyfields)/sizeof(struct dbsimple_field),        dbw_policyfields,  };
+struct dbsimple_definition dbw_policykeydefinition =     { sizeof(struct dbw_policykey),     dbsimple_FLAG_HASREVISION, sizeof(dbw_policykeyfields)/sizeof(struct dbsimple_field),     dbw_policykeyfields };
+struct dbsimple_definition dbw_hsmkeydefinition =        { sizeof(struct dbw_hsmkey),        dbsimple_FLAG_HASREVISION, sizeof(dbw_hsmkeyfields)/sizeof(struct dbsimple_field),        dbw_hsmkeyfields };
+struct dbsimple_definition dbw_zonedefinition =          { sizeof(struct dbw_zone),          dbsimple_FLAG_HASREVISION, sizeof(dbw_zonefields)/sizeof(struct dbsimple_field),          dbw_zonefields };
+struct dbsimple_definition dbw_keydefinition =           { sizeof(struct dbw_key),           dbsimple_FLAG_HASREVISION, sizeof(dbw_keyfields)/sizeof(struct dbsimple_field),           dbw_keyfields };
+struct dbsimple_definition dbw_keystatedefinition =      { sizeof(struct dbw_keystate),      dbsimple_FLAG_HASREVISION, sizeof(dbw_keystatefields)/sizeof(struct dbsimple_field),      dbw_keystatefields };
+struct dbsimple_definition dbw_keydependencydefinition = { sizeof(struct dbw_keydependency), 0,                         sizeof(dbw_keydependencyfields)/sizeof(struct dbsimple_field), dbw_keydependencyfields };
 
 static struct dbsimple_definition* dbw_definitions[] = {
     &dbw_datadefinition, &dbw_policydefinition, &dbw_policykeydefinition, &dbw_hsmkeydefinition, &dbw_zonedefinition, &dbw_keydefinition, &dbw_keystatedefinition, &dbw_keydependencydefinition
 };
+
+#ifndef OPENDNSSEC_CONFIG_FILE
 
 int
 example_dbsetup(char* location)
@@ -387,3 +394,5 @@ example_dbtest(void)
 
     return 0;
 }
+
+#endif
