@@ -24,12 +24,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include <stdlib.h>
-#include <stdint.h>
-
 #ifndef TREE_H
 #define TREE_H
+
+#include <stdlib.h>
+#include <stdint.h>
 
 #ifndef tree_DEFAULT_MAXDEPTH
 #define tree_DEFAULT_MAXDEPTH 40
