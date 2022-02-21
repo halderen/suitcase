@@ -17,7 +17,7 @@ ACX_STRICT
 dnl CHECK_COMPILER_FLAG(std=c99, [C99FLAG="-std=c99"])
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h string.h])
-AC_CHECK_FUNCS([strrchr])
+AC_CHECK_FUNCS([strrchr getopt_long])
 AC_C_CONST
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T

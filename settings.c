@@ -392,8 +392,8 @@ settings_clone(settings_handle handle, settings_handle* copy)
 {
     if(!handle)
         handle = defaulthandle;
-    copy = malloc(sizeof(struct settings_struct));
-    if(!copy)
+    *copy = malloc(sizeof(struct settings_struct));
+    if(!*copy)
         return -1;
     (*copy)->document = handle->document;
     (*copy)->root     = handle->root;

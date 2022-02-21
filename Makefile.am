@@ -14,7 +14,7 @@ ACLOCAL_AMFLAGS = -Im4
 AM_CFLAGS = -DSYSCONFDIR=@sysconfdir@
 
 # libsuitcase_CFLAGS = -D_REENTRANT -O2
-suitcase_CFLAGS = @MYSQL_CFLAGS@ @SQLITE3_CFLAGS@
+suitcase_CFLAGS = @MYSQL_CFLAGS@ @SQLITE3_CFLAGS@ $(AM_CFLAGS)
 suitcase_LDFLAGS = @MYSQL_LDFLAGS@ @SQLITE3_LDFLAGS@
 suitcase_LDADD = schema_mysql.o schema_sqlite3.o libsuitcase.la $(LIBCURL) -ldl @PTHREAD_LIBS@
 
@@ -48,6 +48,7 @@ suitcase_SOURCES += commandline.c commandline.h
 suitcase_SOURCES += daemonize.c daemonize.h
 suitcase_SOURCES += execute.c execute.h
 suitcase_SOURCES += sqlstmts_sqlite3.inc
+suitcase_SOURCES += longgetopt.c longgetopt.h
 
 if INCLUDE_SQLITE3
 suitcase_SOURCES += dbsimple_sqlite3.c

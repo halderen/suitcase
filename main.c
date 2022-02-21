@@ -87,7 +87,7 @@ main(int argc, char* argv[])
     while((ch = getopt_long(argc, argv, "c:", longopts, NULL)) > 0) {
         switch(ch) {
             case 'c':
-                cfgfile = argv[optind];
+                cfgfile = optarg;
                 break;
             case '?':
             default:
@@ -140,8 +140,8 @@ main(int argc, char* argv[])
     for(int i=0; i<count; i++) {
         settings_getstring(cfghandle, &path, "", "modules.libraries.%d", i);
 	fprintf(stderr, "loading %s\n",path);
-        free(path);
         dlopen(path, RTLD_LAZY|RTLD_LOCAL|RTLD_DEEPBIND);
+        free(path);
     }
 
     /* Initialize simple modules */
