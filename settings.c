@@ -365,7 +365,7 @@ settings_access(settings_handle* handleptr, int basefd, const char* filename)
     }
     *handleptr = malloc(sizeof(struct settings_struct));
     (*handleptr)->document = document;
-    (*handleptr)->root = yaml_document_get_root_node(document);
+    (*handleptr)->root = (document ? yaml_document_get_root_node(document) : NULL);
     return returncode;
 }
 
