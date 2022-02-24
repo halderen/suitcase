@@ -24,32 +24,46 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OPENDNSSEC_CONFIG_FILE
 #include "config.h"
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
 #include <sqlite3.h>
+#include <time.h>
 #include "dbsimple.h"
 #include "exampledb.h"
 
 #include "sqlstmts_sqlite3.inc"
 #include "sqlstmts_mysql.inc"
 
-#ifndef OPENDNSSEC_CONFIG_FILE
 static dbsimple_session_type session;
 static dbsimple_connection_type connection;
-#endif
 
-const char* const** sqlstmts_qschema;
-const char* const** sqlstmts_schema;
-const char* const** sqlstmts_qschema1;
-const char* const** sqlstmts_schema1;
-const char* const** sqlstmts_default;
-const char* const** sqlstmts_probe;
+extern dbsimple_fetchplan_reference fetchplanQschema;
+extern dbsimple_fetchplan_reference fetchplanQschema1;
+extern dbsimple_fetchplan_reference fetchplanSchema;
+extern dbsimple_fetchplan_reference fetchplanSchema1;
+extern dbsimple_fetchplan_reference fetchplanProbe;
+extern dbsimple_fetchplan_reference fetchplanDefault;
 
+static dbsimple_fetchplan_type qschema      = NULL;
+static dbsimple_fetchplan_type qschema1     = NULL;
+static dbsimple_fetchplan_type schema       = NULL;
+static dbsimple_fetchplan_type schema1      = NULL;
+static dbsimple_fetchplan_type probe        = NULL;
+static dbsimple_fetchplan_type defaultfetch = NULL;
+
+static dbsimple_fetchplan_array fetchplans = {
+    &qschema, &qschema1, &schema, &schema1, &probe, &defaultfetch
+};
+
+dbsimple_fetchplan_reference fetchplanQschema  = &fetchplans[0];
+dbsimple_fetchplan_reference fetchplanQschema1 = &fetchplans[1];
+dbsimple_fetchplan_reference fetchplanSchema   = &fetchplans[2];
+dbsimple_fetchplan_reference fetchplanSchema1  = &fetchplans[3];
+dbsimple_fetchplan_reference fetchplanProbe    = &fetchplans[4];
+dbsimple_fetchplan_reference fetchplanDefault  = &fetchplans[5];
 
 struct dbsimple_definition dbw_datadefinition;
 struct dbsimple_definition dbw_policydefinition;
@@ -63,9 +77,10 @@ struct dbsimple_definition dbw_keystatedefinition;
 struct dbsimple_definition dbw_keydependencydefinition;
 
 struct dbsimple_field dbw_datafields[] = {
-    { dbsimple_MASTERREFERENCES, &dbw_policydefinition, offsetof(struct dbw_data, policies), offsetof(struct dbw_data, npolicies) },
-    //{ dbsimple_MASTERREFERENCES, &dbw_policykeydefinition, offsetof(struct dbw_data, policykeys), offsetof(struct dbw_data, npolicykeys) },
-    { dbsimple_MASTERREFERENCES, &dbw_zonedefinition, offsetof(struct dbw_data, zones), offsetof(struct dbw_data, nzones) },
+    { dbsimple_MASTERREFERENCES, &dbw_policydefinition,    offsetof(struct dbw_data, policies),   offsetof(struct dbw_data, npolicies) },
+    { dbsimple_MASTERREFERENCES, &dbw_policykeydefinition, -1, -1},
+    { dbsimple_MASTERREFERENCES, &dbw_hsmkeydefinition,    offsetof(struct dbw_data, hsmkeys),    offsetof(struct dbw_data, nhsmkeys) },
+    { dbsimple_MASTERREFERENCES, &dbw_zonedefinition,      offsetof(struct dbw_data, zones),      offsetof(struct dbw_data, nzones) },
 };
 
 struct dbsimple_field dbw_policyfields[] = {
@@ -105,10 +120,10 @@ struct dbsimple_field dbw_policyfields[] = {
     { dbsimple_UINT,           &dbw_policydefinition,    offsetof(struct dbw_policy, parent_ds_ttl),               -1 },
     { dbsimple_UINT,           &dbw_policydefinition,    offsetof(struct dbw_policy, parent_soa_ttl),              -1 },
     { dbsimple_UINT,           &dbw_policydefinition,    offsetof(struct dbw_policy, parent_soa_minimum),          -1 },
-    { dbsimple_BACKREFERENCE,  &dbw_datadefinition,      offsetof(struct dbw_data, policies), offsetof(struct dbw_data, npolicies) },
-    { dbsimple_OPENREFERENCES, &dbw_policykeydefinition, offsetof(struct dbw_policy, policykey),  -1 },
-    { dbsimple_OPENREFERENCES, &dbw_hsmkeydefinition,    offsetof(struct dbw_policy, hsmkey),  -1 },
-    { dbsimple_OPENREFERENCES, &dbw_zonedefinition,      offsetof(struct dbw_policy, zone),  offsetof(struct dbw_policy, zone_count) },
+    { dbsimple_BACKREFERENCE,  &dbw_datadefinition,      offsetof(struct dbw_data, policies),    offsetof(struct dbw_data, npolicies) },
+    { dbsimple_OPENREFERENCES, &dbw_policykeydefinition, offsetof(struct dbw_policy, policykey), offsetof(struct dbw_policy, policykey_count) },
+    { dbsimple_OPENREFERENCES, &dbw_hsmkeydefinition,    offsetof(struct dbw_policy, hsmkey),    offsetof(struct dbw_policy, hsmkey_count) },
+    { dbsimple_OPENREFERENCES, &dbw_zonedefinition,      offsetof(struct dbw_policy, zone),      offsetof(struct dbw_policy, zone_count) },
 };
 
 struct dbsimple_field dbw_policykeyfields[] = {
@@ -130,7 +145,6 @@ struct dbsimple_field dbw_policykeyfields[] = {
 struct dbsimple_field dbw_hsmkeyfields[] = {
     { dbsimple_LONGINT,        &dbw_hsmkeydefinition,       offsetof(struct dbw_hsmkey, id),                 -1 },
     { dbsimple_INT,            NULL,                     -1, -1 }, // [rev]
-    { dbsimple_OPENREFERENCES, &dbw_hsmkeydefinition,       offsetof(struct dbw_hsmkey, key),                -1 },
     { dbsimple_STRING,         &dbw_hsmkeydefinition,       offsetof(struct dbw_hsmkey, locator),            -1 },
     { dbsimple_STRING,         &dbw_hsmkeydefinition,       offsetof(struct dbw_hsmkey, repository),         -1 },
     { dbsimple_UINT,           &dbw_hsmkeydefinition,       offsetof(struct dbw_hsmkey, state),              -1 },
@@ -142,6 +156,8 @@ struct dbsimple_field dbw_hsmkeyfields[] = {
     { dbsimple_UINT,           &dbw_hsmkeydefinition,       offsetof(struct dbw_hsmkey, key_type),           -1 },
     { dbsimple_UINT,           &dbw_hsmkeydefinition,       offsetof(struct dbw_hsmkey, backup),             -1 },
     { dbsimple_BACKREFERENCE,  &dbw_policydefinition,       offsetof(struct dbw_policy, hsmkey),             offsetof(struct dbw_policy, hsmkey_count) },
+    { dbsimple_BACKREFERENCE,  &dbw_datadefinition,         offsetof(struct dbw_data,   hsmkeys),            offsetof(struct dbw_data, nhsmkeys) },
+    { dbsimple_OPENREFERENCES, &dbw_hsmkeydefinition,       offsetof(struct dbw_hsmkey, key),                -1 },
 };
 
 struct dbsimple_field dbw_zonefields[] = {
@@ -149,7 +165,7 @@ struct dbsimple_field dbw_zonefields[] = {
     { dbsimple_INT,            NULL,                     -1, -1 }, // [rev]
     { dbsimple_REFERENCE,      &dbw_policydefinition,     offsetof(struct dbw_zone, policy),                 -1 },
     { dbsimple_BACKREFERENCE,  &dbw_policydefinition,     offsetof(struct dbw_policy, zone),                 offsetof(struct dbw_policy, zone_count) },
-    { dbsimple_OPENREFERENCES, &dbw_zonedefinition,       offsetof(struct dbw_zone, key),                    -1 },
+    { dbsimple_OPENREFERENCES, &dbw_zonedefinition,       offsetof(struct dbw_zone, key),                    offsetof(struct dbw_zone, key_count) },
     { dbsimple_STRING,         &dbw_zonedefinition,       offsetof(struct dbw_zone, name),                   -1 },
     { dbsimple_LONGINT,        &dbw_zonedefinition,       offsetof(struct dbw_zone, next_change),            -1 },
     { dbsimple_STRING,         &dbw_zonedefinition,       offsetof(struct dbw_zone, signconf_path),          -1 },
@@ -167,13 +183,14 @@ struct dbsimple_field dbw_zonefields[] = {
     { dbsimple_UINT,           &dbw_zonedefinition,       offsetof(struct dbw_zone, roll_ksk_now),           -1 },
     { dbsimple_UINT,           &dbw_zonedefinition,       offsetof(struct dbw_zone, roll_zsk_now),           -1 },
     { dbsimple_UINT,           &dbw_zonedefinition,       offsetof(struct dbw_zone, roll_csk_now),           -1 },
-    { dbsimple_BACKREFERENCE,  &dbw_datadefinition,       offsetof(struct dbw_data,   zones), offsetof(struct dbw_data, nzones) },
+    { dbsimple_BACKREFERENCE,  &dbw_datadefinition,       offsetof(struct dbw_data, zones),                  offsetof(struct dbw_data, nzones) },
 };
 
 struct dbsimple_field dbw_keyfields[] = {
     { dbsimple_LONGINT,        &dbw_keydefinition,           offsetof(struct dbw_key, id),                     -1 },
     { dbsimple_INT,            NULL, -1, -1 }, // [rev]
     { dbsimple_REFERENCE,      &dbw_zonedefinition,          offsetof(struct dbw_key, zone),                -1 },
+    { dbsimple_BACKREFERENCE,  &dbw_zonedefinition,          offsetof(struct dbw_zone, key),                offsetof(struct dbw_zone, key_count) },
     { dbsimple_REFERENCE,      &dbw_hsmkeydefinition,        offsetof(struct dbw_key, hsmkey),              -1 },
     { dbsimple_OPENREFERENCES, &dbw_keystatedefinition,      offsetof(struct dbw_key, keystate),            offsetof(struct dbw_key, keystate_count) },
     { dbsimple_OPENREFERENCES, &dbw_keydependencydefinition, offsetof(struct dbw_key, from_keydependency),  offsetof(struct dbw_key, from_keydependency_count) },
@@ -216,57 +233,53 @@ struct dbsimple_field dbw_keydependencyfields[] = {
 struct dbsimple_definition dbw_datadefinition =          { sizeof(struct dbw_data),          dbsimple_FLAG_SINGLETON,   sizeof(dbw_datafields)/sizeof(struct dbsimple_field),          dbw_datafields };
 struct dbsimple_definition dbw_policydefinition =        { sizeof(struct dbw_policy),        dbsimple_FLAG_HASREVISION, sizeof(dbw_policyfields)/sizeof(struct dbsimple_field),        dbw_policyfields,  };
 struct dbsimple_definition dbw_policykeydefinition =     { sizeof(struct dbw_policykey),     dbsimple_FLAG_HASREVISION, sizeof(dbw_policykeyfields)/sizeof(struct dbsimple_field),     dbw_policykeyfields };
-struct dbsimple_definition dbw_hsmkeydefinition =        { sizeof(struct dbw_hsmkey),        dbsimple_FLAG_HASREVISION, sizeof(dbw_hsmkeyfields)/sizeof(struct dbsimple_field),        dbw_hsmkeyfields };
 struct dbsimple_definition dbw_zonedefinition =          { sizeof(struct dbw_zone),          dbsimple_FLAG_HASREVISION, sizeof(dbw_zonefields)/sizeof(struct dbsimple_field),          dbw_zonefields };
 struct dbsimple_definition dbw_keydefinition =           { sizeof(struct dbw_key),           dbsimple_FLAG_HASREVISION, sizeof(dbw_keyfields)/sizeof(struct dbsimple_field),           dbw_keyfields };
 struct dbsimple_definition dbw_keystatedefinition =      { sizeof(struct dbw_keystate),      dbsimple_FLAG_HASREVISION, sizeof(dbw_keystatefields)/sizeof(struct dbsimple_field),      dbw_keystatefields };
 struct dbsimple_definition dbw_keydependencydefinition = { sizeof(struct dbw_keydependency), 0,                         sizeof(dbw_keydependencyfields)/sizeof(struct dbsimple_field), dbw_keydependencyfields };
+struct dbsimple_definition dbw_hsmkeydefinition =        { sizeof(struct dbw_hsmkey),        dbsimple_FLAG_HASREVISION, sizeof(dbw_hsmkeyfields)/sizeof(struct dbsimple_field),        dbw_hsmkeyfields };
 
 static struct dbsimple_definition* dbw_definitions[] = {
-    &dbw_datadefinition, &dbw_policydefinition, &dbw_policykeydefinition, &dbw_hsmkeydefinition, &dbw_zonedefinition, &dbw_keydefinition, &dbw_keystatedefinition, &dbw_keydependencydefinition
+    &dbw_datadefinition,
+    &dbw_hsmkeydefinition,
+    &dbw_policydefinition,
+    &dbw_policykeydefinition,
+    &dbw_zonedefinition,
+    &dbw_keydefinition,
+    &dbw_keystatedefinition,
+    &dbw_keydependencydefinition
 };
-
-#ifndef OPENDNSSEC_CONFIG_FILE
 
 int
 example_dbsetup(char* location)
 {
     int rcode;
     int exists;
-    
-    if(!strncasecmp(location,"sqlite3:",strlen("sqlite3:")) || !strcasecmp(location,"sqlite3")) {
-        rcode = dbsimple_openconnection(location,
-                                   sizeof(sqlstmts_sqlite3_array)/sizeof(const char*) - 1 , sqlstmts_sqlite3_array,
-                                   sizeof(dbw_definitions)/sizeof(struct dbsimple_definition*), dbw_definitions, &connection);
-        if(rcode) {
-            return -1;
-        }
-        sqlstmts_qschema  = sqlstmts_sqlite3_qschema;
-        sqlstmts_schema   = sqlstmts_sqlite3_schema;
-        sqlstmts_qschema1 = sqlstmts_sqlite3_qschema1;
-        sqlstmts_schema1  = sqlstmts_sqlite3_schema1;
-        sqlstmts_default  = sqlstmts_sqlite3_default;
-    } else if(!strncasecmp(location,"mysql:",strlen("mysql:"))) {
-        rcode = dbsimple_openconnection(location,
-                                   sizeof(sqlstmts_mysql_array)/sizeof(const char*) - 1 , sqlstmts_mysql_array,
-                                   sizeof(dbw_definitions)/sizeof(struct dbsimple_definition*), dbw_definitions, &connection);
-        if(rcode) {
-            return -1;
-        }
-        sqlstmts_qschema  = sqlstmts_mysql_qschema;
-        sqlstmts_schema   = sqlstmts_mysql_schema;
-        sqlstmts_qschema1 = sqlstmts_mysql_qschema1;
-        sqlstmts_schema1  = sqlstmts_mysql_schema1;
-        sqlstmts_default  = sqlstmts_mysql_default;
-    }
 
+    rcode = dbsimple_openconnection(location, sizeof(fetchplans)/sizeof(dbsimple_fetchplan_reference), fetchplans,
+                                    sizeof(dbw_definitions)/sizeof(struct dbsimple_definition*), dbw_definitions, &connection);
+    dbsimple_fetchplan(&qschema,      connection, "sqlite3", sqlstmts_sqlite3_qschema_);
+    dbsimple_fetchplan(&qschema1,     connection, "sqlite3", sqlstmts_sqlite3_qschema1_);
+    dbsimple_fetchplan(&schema,       connection, "sqlite3", sqlstmts_sqlite3_schema_);
+    dbsimple_fetchplan(&schema1,      connection, "sqlite3", sqlstmts_sqlite3_schema1_);
+    dbsimple_fetchplan(&probe,        connection, "sqlite3", sqlstmts_sqlite3_probe_);
+    dbsimple_fetchplan(&defaultfetch, connection, "sqlite3", sqlstmts_sqlite3_default_);
+    dbsimple_fetchplan(&qschema,      connection, "mysql",   sqlstmts_mysql_qschema_);
+    dbsimple_fetchplan(&qschema1,     connection, "mysql",   sqlstmts_mysql_qschema1_);
+    dbsimple_fetchplan(&schema,       connection, "mysql",   sqlstmts_mysql_schema_);
+    dbsimple_fetchplan(&schema1,      connection, "mysql",   sqlstmts_mysql_schema1_);
+    dbsimple_fetchplan(&probe,        connection, "mysql",   sqlstmts_mysql_probe_);
+    dbsimple_fetchplan(&defaultfetch, connection, "mysql",   sqlstmts_mysql_default_);
+    if(rcode) {
+        return -1;
+    }
     dbsimple_opensession(connection, &session);
 
     exists = 0;
-    dbsimple_sync(session, sqlstmts_qschema, &exists);
+    dbsimple_sync(session, fetchplanQschema, &exists);
     if(exists == 0) {
         fprintf(stderr,"initializing schema\n");
-        rcode = dbsimple_sync(session, sqlstmts_schema, &exists);
+        rcode = dbsimple_sync(session, fetchplanSchema, &exists);
         if(rcode)
             fprintf(stderr,"initializing schema failed\n");
         dbsimple_closesession(session);
@@ -274,10 +287,10 @@ example_dbsetup(char* location)
     } else {
         fprintf(stderr,"checking schema\n");
         exists = 0;
-        dbsimple_sync(session, sqlstmts_qschema1, &exists);
+        dbsimple_sync(session, fetchplanQschema1, &exists);
         if(exists == 0) {
             fprintf(stderr,"updating schema[1]\n");
-            rcode = dbsimple_sync(session, sqlstmts_schema1, &exists);
+            rcode = dbsimple_sync(session, fetchplanSchema1, &exists);
             if(rcode)
                 fprintf(stderr,"updating schema[1] failed\n");
             dbsimple_closesession(session);
@@ -285,9 +298,19 @@ example_dbsetup(char* location)
         }
     }
     fprintf(stderr,"schema complete\n");
+    
+    dbsimple_closesession(session);
     return 0;
 }
 
+
+static char* strtime(unsigned long seconds)
+{
+    time_t t = seconds;
+    char* s = ctime(&t);
+    s[strlen(s)-1]='\0';
+    return s;
+}
 
 int
 example_dbtest(void)
@@ -295,33 +318,48 @@ example_dbtest(void)
     struct dbw_data* data;
     dbsimple_opensession(connection, &session);
 
-    data = dbsimple_fetch(session, sqlstmts_default);
+    data = dbsimple_fetch(session, fetchplanDefault);
     if(data) {
+        printf("%d hsmkeys\n",data->nhsmkeys);
+        for(int i = 0; i<data->nhsmkeys; i++) {
+            printf("hsmkey %ld\n",data->hsmkeys[i]->id);
+            printf("  repository  %s\n",data->hsmkeys[i]->repository);
+            printf("  locator     %s\n",data->hsmkeys[i]->locator);
+            printf("  inception   %s\n",strtime(data->hsmkeys[i]->inception));
+            printf("  state=%d bits=%d algo=%d role=%d revoked=%d keytype=%d backup=%d\n",
+                   data->hsmkeys[i]->state,
+                   data->hsmkeys[i]->bits,
+                   data->hsmkeys[i]->algorithm,
+                   data->hsmkeys[i]->role,
+                   data->hsmkeys[i]->is_revoked,
+                   data->hsmkeys[i]->key_type,
+                   data->hsmkeys[i]->backup);
+        }
+
         printf("%d policies\n",data->npolicies);
         for(int i=0; i<data->npolicies; i++) {
-            printf("policy %ld %s description: %s\n",data->policies[i]->id,data->policies[i]->name, data->policies[i]->description);
-            printf("  signatures_resign           %d\n",data->policies[i]->signatures_resign);
-            printf("  signatures_refresh          %d\n",data->policies[i]->signatures_refresh);
-            printf("  signatures_jitter           %d\n",data->policies[i]->signatures_jitter);
-            printf("  signatures_inception_offset %d\n",data->policies[i]->signatures_inception_offset);
+            printf("\npolicy %ld %s description: %s\n",data->policies[i]->id,data->policies[i]->name, data->policies[i]->description);
+            printf("  signatures_resign           %u\n",data->policies[i]->signatures_resign);
+            printf("  signatures_refresh          %u\n",data->policies[i]->signatures_refresh);
+            printf("  signatures_jitter           %u\n",data->policies[i]->signatures_jitter);
+            printf("  signatures_inception_offset %u\n",data->policies[i]->signatures_inception_offset);
             printf("  signatures_validity_default %d\n",data->policies[i]->signatures_validity_default);
             printf("  signatures_validity_denial  %d\n",data->policies[i]->signatures_validity_denial);
             printf("  signatures_validity_keyset  %d\n",data->policies[i]->signatures_validity_keyset);
-            printf("  signatures_max_zone_ttl     %d\n",data->policies[i]->signatures_max_zone_ttl);
+            printf("  signatures_max_zone_ttl     %u\n",data->policies[i]->signatures_max_zone_ttl);
             printf("  %d hsmkeys\n",data->policies[i]->hsmkey_count);
             for(int j=0; j<data->policies[i]->hsmkey_count; j++) {
                 printf("    hsmkey %ld repository=%s\n", data->policies[i]->hsmkey[j]->id, data->policies[i]->hsmkey[j]->repository);
             }
             printf("  %d policykeys\n",data->policies[i]->policykey_count);
             for(int j=0; j<data->policies[i]->policykey_count; j++) {
-                printf("    policykey %ld role=%d repository=%s algo=%u bits=%u lifetime=%u standby=%u manual=%u rfc5011=%u min=%u\n",
+                printf("    policykey %ld role=%u repository=%s algo=%u bits=%u lifetime=%u standby=%u manual=%u rfc5011=%u min=%u\n",
                        data->policies[i]->policykey[j]->id,
                        data->policies[i]->policykey[j]->role, data->policies[i]->policykey[j]->repository,
                        data->policies[i]->policykey[j]->algorithm, data->policies[i]->policykey[j]->bits,
                        data->policies[i]->policykey[j]->lifetime, data->policies[i]->policykey[j]->standby,
                        data->policies[i]->policykey[j]->manual_rollover, data->policies[i]->policykey[j]->rfc5011, data->policies[i]->policykey[j]->minimize);
             }
-            printf("  policykeys %d:\n",data->policies[i]->policykey_count);
             
             printf("  %d zones\n",data->policies[i]->zone_count);
             for(int j=0; j<data->policies[i]->zone_count; j++) {
@@ -331,68 +369,43 @@ example_dbtest(void)
         printf("%d zones\n",data->nzones);
         for(int i = 0; i<data->nzones; i++) {
             printf("zone %ld %s\n",data->zones[i]->id, data->zones[i]->name);
+            printf("  policy               %s\n",(data->zones[i]->policy ? data->zones[i]->policy->name : "UNKNOWN"));
+            printf("  input adapter type   %s\n",data->zones[i]->input_adapter_type);
+            printf("  input adapter uri    %s\n",data->zones[i]->input_adapter_uri);
+            printf("  output adapter type  %s\n",data->zones[i]->output_adapter_type);
+            printf("  output adapter uri   %s\n",data->zones[i]->output_adapter_uri);
+            printf("  signconf path        %s\n",data->zones[i]->signconf_path);
+            printf("  signconf dirty       %u\n",data->zones[i]->signconf_needs_writing);
+            printf("  next change          %s\n",strtime(data->zones[i]->next_change));
+            printf("  next ksk roll        %s\n",strtime(data->zones[i]->next_ksk_roll));
+            printf("  next zak roll        %s\n",strtime(data->zones[i]->next_zsk_roll));
+            printf("  next csk roll        %s\n",strtime(data->zones[i]->next_csk_roll));
+            printf("  ttl end ds           %s\n",strtime(data->zones[i]->ttl_end_ds));
+            printf("  ttl end dk           %s\n",strtime(data->zones[i]->ttl_end_dk));
+            printf("  ttl end rs           %s\n",strtime(data->zones[i]->ttl_end_rs));
+            printf("  forced ksk roll      %u\n",data->zones[i]->roll_ksk_now);
+            printf("  forced zak roll      %u\n",data->zones[i]->roll_zsk_now);
+            printf("  forced csk roll      %u\n",data->zones[i]->roll_csk_now);
+            printf("  %d keys\n",data->zones[i]->key_count);
+            for(int j=0; j<data->zones[i]->key_count; j++) {
+                printf("    key %ld zone %s role=%u ds_at_parent=%u algorithm=%u inception=%ld introducing=%u revoke=%u standby=%u activezsk=%u activeksk=%u"
+                       " publish=%u keytag=%u minimize=%u\n",
+                       data->zones[i]->key[j]->id, data->zones[i]->key[j]->zone->name,
+                       data->zones[i]->key[j]->role, data->zones[i]->key[j]->ds_at_parent, data->zones[i]->key[j]->algorithm, data->zones[i]->key[j]->inception,
+                       data->zones[i]->key[j]->introducing, data->zones[i]->key[j]->should_revoke, data->zones[i]->key[j]->standby,
+                       data->zones[i]->key[j]->active_zsk, data->zones[i]->key[j]->active_ksk, data->zones[i]->key[j]->publish, data->zones[i]->key[j]->keytag,
+                       data->zones[i]->key[j]->minimize);
+                printf("      %d key states\n",data->zones[i]->key[j]->keystate_count);
+                printf("      %d key from dependencies\n", data->zones[i]->key[j]->from_keydependency_count);
+                printf("      %d key from dependencies\n", data->zones[i]->key[j]->to_keydependency_count);
+            }
         }
+
         dbsimple_commit(session);
     }
 
-#ifdef BERRY
-    data = dbsimple_fetch(session, sqlstmts_sqlite_default);
-    if(data) {
-        struct zone* zone = malloc(sizeof (struct zone));
-        zone->name = strdup("example.nl");
-        zone->policy = data->policies[0];
-        zone->nsubzones = 0;
-        zone->subzones = NULL;
-        zone->parent = NULL;
-        data->nzones += 1;
-        data->zones = realloc(data->zones, sizeof (struct zone*) * data->nzones);
-        data->zones[data->nzones - 1] = zone;
-        dbsimple_dirty(session, zone);
-    }
-    dbsimple_commit(session);
-
-    data = dbsimple_fetch(session, sqlstmts_sqlite_default);
-    if(data) {
-        dbsimple_delete(session, data->zones[3]);
-        //free(data->zones[3]);
-        data->zones[3] = NULL;
-    }
-    dbsimple_commit(session);
-
-    data = dbsimple_fetch(session, sqlstmts_sqlite_default);
-    if(data) {
-        dbsimple_dirty(session, data->zones[3]);
-        free(data->zones[3]);
-        data->zones[3] = NULL;
-    }
-    dbsimple_commit(session);
-
-    data = dbsimple_fetch(session, sqlstmts_mysql_default);
-    printf("policies:\n");
-    for(int i=0; data && data->policies && i<data->npolicies; i++) {
-      printf("  %s %d\n",data->policies[i]->name, data->policies[i]->nzones);
-      for(int j=0; j<data->policies[i]->nzones; j++)
-          printf("    %s\n",data->policies[i]->zones[j]->name);
-    }
-    printf("zones:\n");
-    for(int i=0; data && data->zones && i<data->nzones; i++) {
-      printf("  %s",data->zones[i]->name);
-      if(data->zones[i]->parent) {
-        printf(" %s",data->zones[i]->parent->name);
-      }
-      printf(" %s", data->zones[i]->policy->name);
-      for(int j=0; j<data->zones[i]->nsubzones; j++) {
-          printf(" %s",data->zones[i]->subzones[j]->name);
-      }
-      printf("\n");
-    }
-    dbsimple_commit(session);
-
     dbsimple_closesession(session);
     dbsimple_closeconnection(connection);
-#endif
 
     return 0;
 }
-
-#endif

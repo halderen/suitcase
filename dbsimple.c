@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <setjmp.h>
 
 #include "utilities.h"
 #include "tree.h"
@@ -67,8 +68,44 @@ dbsimple_registermodule(const struct dbsimple_module* bindings)
 }
 
 int
+dbsimple_fetchplan(dbsimple_fetchplan_type* fetchplan, dbsimple_connection_type connection, char* modulename, const char* const* queries)
+{
+    int definitionindex = 0;
+    struct dbsimple_definitionimpl** definitions;
+    if(strcmp(modulename, connection->baseconnection.module->identifier))
+        return 0;
+    *fetchplan = malloc(sizeof(struct dbsimple_fetchplan_struct));
+    (*fetchplan)->queries = queries;
+    (*fetchplan)->ndefinitions = connection->baseconnection.ndefinitions;
+    (*fetchplan)->definitions = definitions = malloc(sizeof(struct dbsimple_definitionimpl*) * (*fetchplan)->ndefinitions);
+    for(int i=0; i<(*fetchplan)->ndefinitions; i++) {
+        struct dbsimple_definition* d = connection->baseconnection.definitions[i];
+        definitions[i] = malloc(sizeof(struct dbsimple_definitionimpl));
+        definitions[i]->nfields = d->nfields;
+        definitions[i]->fields  = malloc(sizeof(struct dbsimple_fieldimpl) * d->nfields);;
+        definitions[i]->flags   = d->flags;
+        definitions[i]->size    = d->size;
+        for(int j=0; j<d->nfields; j++) {
+            if(d->fields[j].def) {
+                for(definitionindex = connection->baseconnection.ndefinitions - 1; definitionindex > 0; definitionindex--) {
+                    if(connection->baseconnection.definitions[definitionindex] == d->fields[j].def)
+                        break;
+                }
+                assert(definitionindex >= 0);
+            } else
+                definitionindex = -1;
+            definitions[i]->fields[j].type        = d->fields[j].type;
+            definitions[i]->fields[j].fieldoffset = d->fields[j].fieldoffset;
+            definitions[i]->fields[j].countoffset = d->fields[j].countoffset;
+            definitions[i]->fields[j].def         = (definitionindex >= 0 ? &(definitions[definitionindex]) : NULL);
+        }
+    }
+    return 0;
+}
+
+int
 dbsimple_openconnection(char* location,
-                        int nqueries, const char* const** queries,
+                        int nplans, dbsimple_fetchplan_array plans,
                         int ndefinitions, struct dbsimple_definition** definitions,
                         dbsimple_connection_type* connectionPtr)
 {
@@ -77,10 +114,10 @@ dbsimple_openconnection(char* location,
     dbsimple_connection_type connection;
     const struct dbsimple_module* module = NULL;
 
-    if(nqueries < 0) {
-        for(count=0; queries[count]; count++)
+    if(nplans < 0) {
+        for(count=0; plans[count]; count++)
             ;
-        nqueries = count;
+        nplans = count;
     }
     if(ndefinitions < 0) {
         for(count=0; definitions[count]; count++)
@@ -102,21 +139,14 @@ dbsimple_openconnection(char* location,
         return -1;
     }
 
-    returnCode = module->openconnection(location, nqueries, queries, connectionPtr);
+    returnCode = module->openconnection(location, nplans, plans, connectionPtr);
     connection = *connectionPtr;
+    connection->baseconnection.module       = module;
     connection->baseconnection.location     = strdup(location);
-    connection->baseconnection.nqueries     = nqueries;
-    connection->baseconnection.queries      = queries;
+    connection->baseconnection.nplans       = nplans;
+    connection->baseconnection.plans        = plans;
     connection->baseconnection.ndefinitions = ndefinitions;
     connection->baseconnection.definitions  = definitions;
-    if(module->closeconnection) connection->baseconnection.closeconnection = module->closeconnection;
-    if(module->opensession)     connection->baseconnection.opensession     = module->opensession;
-    if(module->closesession)    connection->baseconnection.closesession    = module->closesession;
-    if(module->syncdata)        connection->baseconnection.syncdata        = module->syncdata;
-    if(module->fetchdata)       connection->baseconnection.fetchdata       = module->fetchdata;
-    if(module->commitdata)      connection->baseconnection.commitdata      = module->commitdata;
-    if(module->fetchobject)     connection->baseconnection.fetchobject     = module->fetchobject;
-    if(module->persistobject)   connection->baseconnection.persistobject   = module->persistobject;
     return returnCode;
 }
 
@@ -125,27 +155,26 @@ dbsimple_closeconnection(dbsimple_connection_type connection)
 {
     free(connection->baseconnection.location);
     connection->baseconnection.location = NULL;
-    connection->baseconnection.closeconnection(connection);
+    connection->baseconnection.module->closeconnection(connection);
     return 0;
 }
 
 int
 dbsimple_opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionPtr)
-{
+{  
     int returnCode = 0;
     dbsimple_session_type session;
     if(!connection) {
         sessionPtr = NULL;
         return -1;
     }
-    returnCode = connection->baseconnection.opensession(connection, sessionPtr);
+    returnCode = connection->baseconnection.module->opensession(connection, sessionPtr);
     session = *sessionPtr;
-    session->basesession.closesession  = connection->baseconnection.closesession;
-    session->basesession.syncdata      = connection->baseconnection.syncdata;
-    session->basesession.fetchdata     = connection->baseconnection.fetchdata;
-    session->basesession.commitdata    = connection->baseconnection.commitdata;
-    session->basesession.fetchobject   = connection->baseconnection.fetchobject;
-    session->basesession.persistobject = connection->baseconnection.persistobject;
+    session->basesession.connection = &(connection->baseconnection);
+    session->basesession.module        = connection->baseconnection.module;
+    session->basesession.firstmodified = NULL;
+    session->basesession.objectmap     = NULL;
+    session->basesession.pointermap    = NULL;
     return returnCode;
 }
 
@@ -153,26 +182,42 @@ int
 dbsimple_closesession(dbsimple_session_type session)
 {
     int returnCode = 0;
-    returnCode = session->basesession.closesession(session);
+    if(!setjmp(session->basesession.exceptionstate)) {
+        returnCode = session->basesession.module->closesession(session);
+    } else {
+        returnCode = 1;
+    }
     return returnCode;
 }
 
 int
-dbsimple_sync(dbsimple_session_type session, const char* const** query, void* data)
+dbsimple_sync(dbsimple_session_type session, dbsimple_fetchplan_reference plan, void* data)
 {
     int returnCode = 0;
-    returnCode = session->basesession.syncdata(session, query, data);
+    int index;
+    if(!setjmp(session->basesession.exceptionstate)) {
+        index = plan - session->basesession.connection->plans;
+        if(index >= 0 && index < session->basesession.connection->nplans) {
+            returnCode = session->basesession.module->syncdata(session, **plan, data);
+        }
+    } else {
+        returnCode = 1;   
+    }
     return returnCode;
 }
 
 void*
-dbsimple_fetch(dbsimple_session_type session, const char* const** query, ...)
+dbsimple_fetch(dbsimple_session_type session, dbsimple_fetchplan_reference plan, ...)
 {
     va_list args;
-    void* returnValue;
-    va_start(args, query);
-    returnValue = session->basesession.fetchdata(session, query, args);
-    va_end(args);
+    void* returnValue = NULL;
+    int index;
+    index = plan - session->basesession.connection->plans;
+    if(index >= 0 && index < session->basesession.connection->nplans) {
+        va_start(args, plan);
+        returnValue = session->basesession.module->fetchdata(session, **plan, args);
+        va_end(args);
+    }
     return returnValue;
 }
 
@@ -180,15 +225,10 @@ int
 dbsimple_commit(dbsimple_session_type session)
 {
     int returnCode = 0;
-#ifdef BERRY
-    struct object* object;
-    for(int i=0; i<session->connection->ndefinitions; i++) {
-        if((session->connection->definitions[i]->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON) {
-            object = dbsimple__getobject(&session->basesession, session->connection->definitions[i], 0, NULL);
-            dbsimple__committraverse(&session->basesession, object);
-        }
+    if(!setjmp(session->basesession.exceptionstate)) {
+        returnCode = session->basesession.module->commitdata(session);
+    } else {
+        returnCode = 1;
     }
-#endif
-    returnCode = session->basesession.commitdata(session);
     return returnCode;
 }

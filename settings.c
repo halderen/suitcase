@@ -403,6 +403,10 @@ settings_clone(settings_handle handle, settings_handle* copy)
 void
 settings_free(settings_handle handle)
 {
+    if(handle->document) {
+        yaml_document_delete(handle->document);
+        free((void*)handle->document);
+    }
     free(handle);
 }
 

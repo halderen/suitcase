@@ -183,6 +183,13 @@ const char* const sqlstmts_sqlite3_qschema1_[] = {
   NULL };
 
 const char* const sqlstmts_sqlite3_default_[] = {
+  "SELECT id, rev, locator, repository, state, bits, algorithm, role, inception, isRevoked, keyType, backup, policyId FROM hsmKey",
+
+  "INSERT OR REPLACE INTO hsmKey ( id, rev, policyId, locator, state, bits, algorithm, role, inception, isRevoked, keyType, repository, backup )\n"
+  "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+
+  "DELETE FROM hsmKey WHERE id = ? AND rev = ?",
+
   "SELECT id, rev, name, description, passthrough,\n"
   "       signaturesResign, signaturesRefresh, signaturesJitter, signaturesInceptionOffset,\n"
   "       signaturesValidityDefault, signaturesValidityDenial, signaturesValidityKeyset, signaturesMaxZoneTtl,\n"
@@ -209,20 +216,13 @@ const char* const sqlstmts_sqlite3_default_[] = {
 
   "DELETE FROM policy WHERE id = ? AND rev = ?",
 
-  "SELECT id, rev, policyId, role, algorithm, bits, lifetime, repository, standby, manualRollover, rfc5011, minimize\n"
+  "SELECT id, rev, policyId, policyId, repository, role, algorithm, bits, lifetime, standby, manualRollover, rfc5011, minimize\n"
   "FROM policyKey",
 
   "INSERT OR REPLACE INTO policyKey ( id, rev, policyId, role, algorithm, bits, lifetime, repository, standby, manualRollover, rfc5011, minimize )\n"
   "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )",
 
   "DELETE FROM policykey WHERE id = ? AND rev = ?",
-
-  "SELECT id, rev, locator, repository, state, bits, algorithm, role, inception, isRevoked, keyType, backup, policyId FROM hsmKey",
-
-  "INSERT OR REPLACE INTO hsmKey ( id, rev, policyId, locator, state, bits, algorithm, role, inception, isRevoked, keyType, repository, backup )\n"
-  "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-
-  "DELETE FROM hsmKey WHERE id = ? AND rev = ?",
 
   "SELECT id, rev, policyId, policyId, name, nextChange, signconfPath,\n"
   "       inputAdapterUri, inputAdapterType, outputAdapterUri, outputAdapterType,\n"
@@ -238,7 +238,7 @@ const char* const sqlstmts_sqlite3_default_[] = {
 
   "DELETE FROM zone WHERE id = ? AND rev = ?",
 
-  "SELECT id, rev, zoneId, hsmKeyId,\n"
+  "SELECT id, rev, zoneId, zoneId, hsmKeyId,\n"
   "       algorithm, inception, role, introducing, shouldRevoke, standby,\n"
   "       activeZsk, publish, activeKsk, dsAtParent, keytag, minimize\n"
   "FROM keyData",

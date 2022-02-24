@@ -39,7 +39,7 @@
 
 struct backpatch {
     struct object* source;
-    struct dbsimple_field* field;
+    struct dbsimple_fieldimpl* field;
     struct backpatch* next;
 };
 
@@ -57,18 +57,17 @@ objectmapcompare(const void* a, const void* b, __attribute__((unused)) void* use
     int result;
     struct object* o1 = (struct object*) a;
     struct object* o2 = (struct object*) b;
-    result = o1->type - o2->type;
+    result = (o1->type ? *(o1->type) : NULL) - (o2->type ? *(o2->type) : NULL);
     if(result == 0) {
-        if(o1->keyname)
+        if(o1->keyname) {
             if(o2->keyname)
                 result = strcmp(o1->keyname, o2->keyname);
             else
                 result = -1;
+        } else if(o2->keyname)
+            result = 1;
         else
-            if(o2->keyname)
-                result = 1;
-            else
-                result = o1->keyid - o2->keyid;
+            result = o1->keyid - o2->keyid;
     }
     return result;
 }
@@ -77,20 +76,25 @@ static int
 deleteobject(struct object* object, __attribute__((unused)) dbsimple_session_type session)
 {
     void*** refarray;
+    struct dbsimple_definitionimpl* def = *(object->type);
     if(object->data) {
-        for(int i=0; i<object->type->nfields; i++) {
-            switch (object->type->fields[i].type) {
+        for(int i=0; i<def->nfields; i++) {
+            switch (def->fields[i].type) {
                 case dbsimple_INT:
                 case dbsimple_UINT:
                 case dbsimple_LONGINT:
                 case dbsimple_ULONGINT:
+                    break;
                 case dbsimple_STRING:
+                    free(*(char**)&(object->data[def->fields[i].fieldoffset]));
+                    break;
                 case dbsimple_REFERENCE:
+                case dbsimple_STUBREFERENCES:
                 case dbsimple_BACKREFERENCE:
                     break;
-                case dbsimple_MASTERREFERENCES:
                 case dbsimple_OPENREFERENCES:
-                    refarray = (void***) &(object->data[object->type->fields[i].fieldoffset]);
+                case dbsimple_MASTERREFERENCES:
+                    refarray = (void***) &(object->data[def->fields[i].fieldoffset]);
                     free(*refarray);
                     break;
                 default:
@@ -98,12 +102,13 @@ deleteobject(struct object* object, __attribute__((unused)) dbsimple_session_typ
             }
         }
         free(object->data);
+        free(object);
     }
     return 0; /* continue */
 }
 
 struct object*
-dbsimple__referencebyptr(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, void* ptr)
+dbsimple__referencebyptr(struct dbsimple_sessionbase* session, struct dbsimple_definitionimpl** def, void* ptr)
 {
     struct object lookup;
     struct object* object;
@@ -129,11 +134,13 @@ dbsimple__committraverse(struct dbsimple_sessionbase* session, struct object* ob
     struct object* targetobj;
     int* refarraycount;
     void*** refarray;
+    struct dbsimple_definitionimpl* def = *(object->type);
     if(object->next != NULL)
         return;
     switch(object->state) {
         case OBJUNKNOWN:
-            abort();
+        case OBJNULL:
+            return;
         case OBJNEW:
         case OBJMODIFIED:
         case OBJREMOVED:
@@ -144,8 +151,8 @@ dbsimple__committraverse(struct dbsimple_sessionbase* session, struct object* ob
             object->next = object;
             break;
     }
-    for(int i=0; i<object->type->nfields; i++) {
-        switch(object->type->fields[i].type) {
+    for(int i=0; i<def->nfields; i++) {
+        switch(def->fields[i].type) {
             case dbsimple_INT:
             case dbsimple_UINT:
             case dbsimple_LONGINT:
@@ -153,25 +160,26 @@ dbsimple__committraverse(struct dbsimple_sessionbase* session, struct object* ob
             case dbsimple_STRING:
                 break;
             case dbsimple_REFERENCE:
-                targetptr = *(void**)&(object->data[object->type->fields[i].fieldoffset]);
+                targetptr = *(void**)&(object->data[def->fields[i].fieldoffset]);
                 if(targetptr) {
-                    targetobj = dbsimple__referencebyptr(session, object->type->fields[i].def, targetptr);
+                    targetobj = dbsimple__referencebyptr(session, def->fields[i].def, targetptr);
                     if(targetobj->type == NULL)
-                        targetobj->type = object->type->fields[i].def;
+                        targetobj->type = def->fields[i].def;
                     dbsimple__committraverse(session, targetobj);
                 }
                 break;
             case dbsimple_BACKREFERENCE:
+            case dbsimple_STUBREFERENCES:
                 break;
             case dbsimple_MASTERREFERENCES:
-                refarraycount = (int*)&(object->data[object->type->fields[i].countoffset]);
-                refarray = (void***)&(object->data[object->type->fields[i].fieldoffset]);
+                refarraycount = (int*)&(object->data[def->fields[i].countoffset]);
+                refarray = (void***)&(object->data[def->fields[i].fieldoffset]);
                 for(int j=0; j<*refarraycount; j++) {
                     targetptr = (*refarray)[j];
                     if(targetptr) {
-                        targetobj = dbsimple__referencebyptr(session, object->type->fields[i].def, targetptr);
+                        targetobj = dbsimple__referencebyptr(session, def->fields[i].def, targetptr);
                         if(targetobj->type == NULL)
-                            targetobj->type = object->type->fields[i].def;
+                            targetobj->type = def->fields[i].def;
                         dbsimple__committraverse(session, targetobj);
                     }
                 }
@@ -185,47 +193,58 @@ dbsimple__committraverse(struct dbsimple_sessionbase* session, struct object* ob
 }
 
 struct object*
-dbsimple__getobject(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, long id, const char* name)
+dbsimple__getobject(struct dbsimple_sessionbase* session, enum objectstate state, struct dbsimple_definitionimpl** def, long id, const char* name)
 {
     tree_reference_type cursor;
     struct object lookup;
     struct object* object;
+    struct object* ptr;
     lookup.type = def;
     lookup.keyid = id;
     lookup.keyname = name;
     object = tree_lookupref(session->objectmap, &lookup, &cursor);
     if (object == NULL) {
-        object = malloc(sizeof (struct object));
-        object->state = OBJUNKNOWN;
-        object->type = def;
-        object->data = calloc(1, def->size);
-        object->keyid = id;
-        object->keyname = NULL;
-        object->revision = -1;
-        object->next = NULL;
-        object->backpatches = NULL;
-        tree_insertref(session->objectmap, object, &cursor);
-        tree_insert(session->pointermap, object);
+        if(state != OBJNULL) {
+            object = malloc(sizeof (struct object));
+            object->state = state;
+            object->type = def;
+            if(state != OBJUNKNOWN) {
+                object->data = calloc(1, (*def)->size);
+            } else {
+                object->data = NULL;
+            }
+            object->keyid = id;
+            object->keyname = name;
+            object->revision = -1;
+            object->next = NULL;
+            object->backpatches = NULL;
+            ptr = tree_insertref(session->objectmap, object, &cursor);
+            assert(!ptr);
+            tree_insert(session->pointermap, object);
+        }
+    } else if(object->data == NULL && state != OBJUNKNOWN) {
+        object->data = calloc(1, (*def)->size);
+        object->state = state;
     }
     return object;
 }
 
 static void
-subscribereference(struct dbsimple_field* field, struct object* source, struct object* subject)
+subscribereference(struct dbsimple_fieldimpl* field, struct object* source, struct object* subject)
 {
     struct backpatch* patch = malloc(sizeof(struct backpatch));
     patch->source = source;
     patch->field = field;
-    patch->next = source->backpatches;
+    patch->next = subject->backpatches;
     subject->backpatches = patch;
 }
 
 void
-dbsimple__assignreference(struct dbsimple_sessionbase* session, struct dbsimple_field* field, long id, const char* name, struct object* source)
+dbsimple__assignreference(struct dbsimple_sessionbase* session, struct dbsimple_fieldimpl* field, long id, const char* name, struct object* source)
 {
     struct object* targetoject;
     void** destination = (void**)&(source->data[field->fieldoffset]);
-    targetoject = dbsimple__getobject(session, field->def, id, name);
+    targetoject = dbsimple__getobject(session, OBJUNKNOWN, field->def, id, name);
     if(targetoject->data) {
         *destination = targetoject->data;
     } else {
@@ -234,13 +253,13 @@ dbsimple__assignreference(struct dbsimple_sessionbase* session, struct dbsimple_
 }
 
 void
-dbsimple__assignbackreference(struct dbsimple_sessionbase* session, struct dbsimple_definition* def, int id, const char* name, struct dbsimple_field* field, struct object* object)
+dbsimple__assignbackreference(struct dbsimple_sessionbase* session, struct dbsimple_definitionimpl** def, int id, const char* name, struct dbsimple_fieldimpl* field, struct object* object)
 {
     struct object* targetobject;
     char* target;
     int* refarraycount;
     void*** refarray;
-    targetobject = dbsimple__getobject(session, def, id, name);
+    targetobject = dbsimple__getobject(session, OBJUNKNOWN, def, id, name);
     target = targetobject->data;
     if(target) {
         refarraycount = (int*)&(target[field->countoffset]);
@@ -268,14 +287,16 @@ resolvebackpatches(struct object* object, __attribute__((unused)) void* user)
                 break;
             case dbsimple_BACKREFERENCE:
                 target = object->data;
-                refarraycount = (int*)&(target[patch->field->countoffset]);
-                refarray = (void***)&(target[patch->field->fieldoffset]);
-                *refarray = realloc(*refarray, sizeof (void*) * (1+ *refarraycount));
-                (*refarray)[*refarraycount] = object->data;
-                *refarraycount += 1;
+                if(target) {
+                    refarraycount = (int*)&(target[patch->field->countoffset]);
+                    refarray = (void***)&(target[patch->field->fieldoffset]);
+                    *refarray = realloc(*refarray, sizeof (void*) * (1+ *refarraycount));
+                    (*refarray)[*refarraycount] = patch->source->data;
+                    *refarraycount += 1;
+                }
                 break;
             default:
-                abort();
+                break;
         }
         object->backpatches = patch->next;
         free(patch);
@@ -286,29 +307,30 @@ resolvebackpatches(struct object* object, __attribute__((unused)) void* user)
 static int
 commitobject(struct object* object, struct dbsimple_sessionbase* session)
 {
-    if((object->type->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON)
+    struct dbsimple_definitionimpl* def = *(object->type);
+    if((def->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON)
         return 0;
 
     if(object->next == NULL) {
         /* this object isn't reachable */
         switch(object->state) {
             case OBJMODIFIED:
-                if((object->type->flags & dbsimple_FLAG_EXPLICITREMOVE) != dbsimple_FLAG_EXPLICITREMOVE)
+                if((def->flags & dbsimple_FLAG_EXPLICITREMOVE) != dbsimple_FLAG_EXPLICITREMOVE)
                     object->state = OBJREMOVED;
                 break;
             case OBJCLEAN:
-                if(object->type->flags & dbsimple_FLAG_AUTOREMOVE)
+                if(def->flags & dbsimple_FLAG_AUTOREMOVE)
                     object->state = OBJREMOVED;
                 break;
             case OBJREMOVED:
                 break;
             case OBJUNKNOWN:
-                abort();
             default:
-                abort();
+                // Object was transient
+                break;
         }
     }
-    return session->persistobject(object, (dbsimple_session_type)session);
+    return session->module->persistobject(object, (dbsimple_session_type)session);
 }
 
 void
@@ -368,7 +390,7 @@ dbsimple_dirty(dbsimple_session_type session, void *ptr)
 }
 
 void*
-dbsimple__fetch(struct dbsimple_sessionbase* session, int ndefinitions, struct dbsimple_definition** definitions)
+dbsimple__fetch(struct dbsimple_sessionbase* session, int ndefinitions, struct dbsimple_definitionimpl** definitions)
 {
     struct object* object = NULL;
 
@@ -377,10 +399,9 @@ dbsimple__fetch(struct dbsimple_sessionbase* session, int ndefinitions, struct d
     session->firstmodified = NULL;
     for(int i=0; i<ndefinitions; i++) {
         if((definitions[i]->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON) {
-            object = dbsimple__getobject(session, definitions[i], 0, NULL);
-            object->state = OBJCLEAN;
+            object = dbsimple__getobject(session, OBJCLEAN, &(definitions[i]), 0, NULL);
         } else {
-            session->fetchobject(definitions[i], (dbsimple_session_type)session);
+            session->module->fetchobject(&(definitions[i]), (dbsimple_session_type)session);
         }
     }
     tree_foreach(session->objectmap, (tree_visitor_type) resolvebackpatches, NULL);

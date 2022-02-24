@@ -393,19 +393,15 @@ syncdata(dbsimple_session_type session, const char* const** query, void* data)
     int stmtindex;
     MYSQL_RES* result;
     MYSQL_ROW row;
-    fprintf(stderr,"BERRY#A#syncdata\n");
     stmtindex = query - session->connection->baseconnection.queries;
     if(stmtindex>=0 && stmtindex<session->nstmts) {
-                fprintf(stderr, "BERRY#B\n");
         stmts = session->stmts[stmtindex];
         if(stmts && *stmts) {
         for(int i = 0; stmts && stmts[i]; i++) {
-                fprintf(stderr, "BERRY#C\n");
                 if(mysql_stmt_execute(stmts[i])) {
                     fprintf(stderr, "MySQL: Error executing query %s (%u)\n%s\n", mysql_error(session->handle), mysql_errno(session->handle), session->connection->baseconnection.queries[stmtindex][i]);
                 }
                 do {
-                    fprintf(stderr, "BERRY#D\n");
                     result = mysql_store_result(session->handle);
                     while((row = mysql_fetch_row(result))&&row[0]) {
                         *(int*)data = atoi(row[0]);
@@ -414,18 +410,14 @@ syncdata(dbsimple_session_type session, const char* const** query, void* data)
                 } while(!mysql_stmt_next_result(stmts[i]));
             }
         } else {
-    fprintf(stderr,"BERRY#a\n");
             const char* const* queries = *query;
             while(*queries) {
-    fprintf(stderr,"BERRY#b %s\n",*queries);
                 if(mysql_query(session->handle, *queries)) {
                     fprintf(stderr, "MySQL: Error executing query %s (%u)\n%s\n", mysql_error(session->handle), mysql_errno(session->handle), *queries);
                 }
                 do {
                 result = mysql_store_result(session->handle);
-    fprintf(stderr,"BERRY#c\n");
                     while((row = mysql_fetch_row(result))&&row[0]) {
-    fprintf(stderr,"BERRY#d\n");
                         *(int*)data = atoi(row[0]);
                     }
                 } while(!mysql_next_result(session->handle));
@@ -627,7 +619,6 @@ persistobject(struct object* object, dbsimple_session_type session)
     int affected = -1;
     MYSQL_STMT* insertStmt = ((MYSQL_STMT**)(object->type->implementation.p))[0];
     MYSQL_STMT* deleteStmt = ((MYSQL_STMT**)(object->type->implementation.p))[1];  
-    fprintf(stderr,"BERRY#persistobject\n");
     switch(object->state) {
         case OBJUNKNOWN:
             abort();
@@ -650,7 +641,7 @@ persistobject(struct object* object, dbsimple_session_type session)
             dostatement(session, deleteStmt, object, 0);
             mysql_stmt_execute(deleteStmt);
             affected = mysql_affected_rows(session->handle);
-            object->data = NULL; // BERRY free data?
+            object->data = NULL;
             if(affected != 1)
                 return -1;
             break;
@@ -666,7 +657,6 @@ fetchdata(dbsimple_session_type session, const char* const** query, __attribute_
     int position = 0;
     if(stmtindex >=0 && stmtindex < session->nstmts && session->stmts[stmtindex] && session->stmts[stmtindex][0]) {
         session->currentStmt = stmts = session->stmts[stmtindex];
-        fprintf(stderr,"BERRY#fetchdata\n");
         for(int i=0; i<session->connection->baseconnection.ndefinitions; i++) {
             if((session->connection->baseconnection.definitions[i]->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
                 ++position;
@@ -694,8 +684,10 @@ commitdata(dbsimple_session_type session)
 
     for(int i=0; i<session->connection->baseconnection.ndefinitions; i++) {
         if((session->connection->baseconnection.definitions[i]->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON) {
-            object = dbsimple__getobject(&session->basesession, session->connection->baseconnection.definitions[i], 0, NULL);
-            dbsimple__committraverse(&session->basesession, object);
+            object = dbsimple__getobject(&session->basesession, NULL, 0, NULL);
+            if(object) {
+                dbsimple__committraverse(&session->basesession, object);
+            }
         }
     }
     dbsimple__commit(&session->basesession);

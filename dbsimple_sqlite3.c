@@ -186,22 +186,21 @@ struct dbsimple_session_struct {
     struct dbsimple_sessionbase basesession;
     dbsimple_connection_type connection;
     sqlite3* handle;
-    int nstmts;
-    sqlite3_stmt*** stmts;
     sqlite3_stmt* beginStmt;
     sqlite3_stmt* commitStmt;
     sqlite3_stmt* rollbackStmt;
+    dbsimple_fetchplan_type currentPlan;
     sqlite3_stmt** currentStmts;
 };
 
-static int openconnection(char* location, __attribute__((unused)) int nqueries, __attribute__((unused)) const char* const** queries, dbsimple_connection_type* connectionPtr);
+static int openconnection(char* location, int nplans,  dbsimple_fetchplan_array plans, dbsimple_connection_type* connectionPtr);
 static int closeconnection(dbsimple_connection_type connection);
 static int opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionPtr);
 static int closesession(dbsimple_session_type session);
-static int syncdata(dbsimple_session_type session, const char* const** query, void* data);
-static void* fetchdata(dbsimple_session_type session, const char* const** query, va_list args);
+static int syncdata(dbsimple_session_type session, struct dbsimple_fetchplan_struct*, void* data);
+static void* fetchdata(dbsimple_session_type session, struct dbsimple_fetchplan_struct*, va_list args);
 static int commitdata(dbsimple_session_type session);
-static void fetchobject(struct dbsimple_definition* def, dbsimple_session_type session);
+static void fetchobject(struct dbsimple_definitionimpl** def, dbsimple_session_type session);
 static int persistobject(struct object* object, dbsimple_session_type session);
 
 static void errorcallback(__attribute__((unused)) void *data, __attribute__((unused)) int errorCode, __attribute__((unused)) const char *errorMessage) {
@@ -214,7 +213,6 @@ static const struct dbsimple_module module1 = {
 static const struct dbsimple_module module2 = {
     "sqlite3", openconnection, closeconnection, opensession, closesession, syncdata, fetchdata, commitdata, fetchobject, persistobject
 };
-
 
 static int initialize(void)
 {
@@ -236,7 +234,7 @@ static void reportError(sqlite3* handle, const char* message)
     fprintf(stderr, "SQLERROR%s%s: %s (%d, %d)\n", ((message&&*message)?" ":""), message, sqlite3_errmsg(handle), sqlite3_errcode(handle), sqlite3_extended_errcode(handle));
 }
 
-static int gobbleResult(void* a, int b, char**c, char**d)
+int gobbleResult(void* a, int b, char**c, char**d)
 {
     (void)a;
     (void)b;
@@ -280,8 +278,29 @@ static int eatResult(sqlite3* handle, sqlite3_stmt* stmt, void* data)
 
 #endif
 
+static sqlite3_stmt*
+getStmtFetch(dbsimple_session_type session, struct dbsimple_definitionimpl** def)
+{
+    int index = (def - session->currentPlan->definitions);
+    return session->currentStmts[index*3+0];
+}
+
+static sqlite3_stmt*
+getStmtInsert(dbsimple_session_type session, struct dbsimple_definitionimpl** def)
+{
+    int index = (def - session->currentPlan->definitions);
+    return session->currentStmts[index*3+1];
+}
+
+static sqlite3_stmt*
+getStmtDelete(dbsimple_session_type session, struct dbsimple_definitionimpl** def)
+{
+    int index = (def - session->currentPlan->definitions);
+    return session->currentStmts[index*3+2];
+}
+
 static void
-fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
+fetchobject(struct dbsimple_definitionimpl** def, dbsimple_session_type session)
 {
     int status;
     int column;
@@ -291,65 +310,72 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
     int intvalue;
     long longvalue;
     char* cstrvalue;
-
     sqlite3* handle = session->connection->handle;
-    sqlite3_stmt* stmt = session->currentStmts[def->implementation.i*3+0];
+    sqlite3_stmt* stmt = getStmtFetch(session, def);
     sqlite3_reset(stmt);
 
     do {
         switch((status = sqlite3_step(stmt))) {
             case SQLITE_ROW:
                 column = 0;
-                for(int i = 0; i<def->nfields; i++) {
-                    switch(def->fields[i].type) {
+                for(int i = 0; i<(*def)->nfields; i++) {
+                    struct dbsimple_fieldimpl* field = &((*def)->fields[i]);
+                    struct dbsimple_definitionimpl* targetdef = (field->def ? *(field->def) : NULL);
+                    int isRevision = (i==1 && ((*def)->flags & dbsimple_FLAG_HASREVISION));
+                    switch(field->type) {
                         case dbsimple_INT:
                         case dbsimple_UINT:
+                            assert(sqlite3_column_type(stmt, column) == SQLITE_INTEGER);
                             intvalue = sqlite3_column_int(stmt, column++);
                             if (i==0) {
-                                object = dbsimple__getobject(&session->basesession, def, intvalue, NULL);
-                                object->state = OBJCLEAN;
-                            } else if(i==1 && (def->flags & dbsimple_FLAG_HASREVISION)) {
+                                object = dbsimple__getobject(&session->basesession, OBJCLEAN, field->def, intvalue, NULL);
+                            } else if(isRevision) {
                                 object->revision = intvalue;
                             }
-                            if(def->fields[i].fieldoffset >= 0)
-                                *(int*)&(object->data[def->fields[i].fieldoffset]) = intvalue;
+                            if(field->fieldoffset >= 0)
+                                *(int*)&(object->data[field->fieldoffset]) = intvalue;
                             break;
                         case dbsimple_LONGINT:
                         case dbsimple_ULONGINT:
+                            assert(sqlite3_column_type(stmt, column) == SQLITE_INTEGER);
                             longvalue = sqlite3_column_int64(stmt, column++);
                             if (i==0) {
-                                object = dbsimple__getobject(&session->basesession, def, longvalue, NULL);
-                                object->state = OBJCLEAN;
-                            } else if(i==1 && (def->flags & dbsimple_FLAG_HASREVISION)) {
+                                object = dbsimple__getobject(&session->basesession, OBJCLEAN, field->def, longvalue, NULL);
+                            } else if(isRevision) {
                                 object->revision = longvalue;
                             }
-                            if(def->fields[i].fieldoffset >= 0)
-                                *(long*)&(object->data[def->fields[i].fieldoffset]) = longvalue;
+                            if(field->fieldoffset >= 0)
+                                *(long*)&(object->data[field->fieldoffset]) = longvalue;
                             break;
                         case dbsimple_STRING:
-                            cstrvalue = strdup((char*)sqlite3_column_text(stmt, column++));
+                            assert(sqlite3_column_type(stmt, column) == SQLITE_TEXT);
+                            cstrvalue = (char*)sqlite3_column_text(stmt, column++);
+                            if(cstrvalue)
+                                cstrvalue = strdup(cstrvalue);
                             if (i==0) {
-                                object = dbsimple__getobject(&session->basesession, def, 0, cstrvalue);
-                                object->state = OBJCLEAN;
+                                object = dbsimple__getobject(&session->basesession, OBJCLEAN, field->def, 0, cstrvalue);
                             }
-                            if(def->fields[i].fieldoffset >= 0)
-                                *(char**)&(object->data[def->fields[i].fieldoffset]) = cstrvalue;
+                            if(field->fieldoffset >= 0)
+                                *(char**)&(object->data[field->fieldoffset]) = cstrvalue;
                             break;
                         case dbsimple_REFERENCE:
                             targetkeyid = 0;
                             targetkeystr = NULL;
                             if(sqlite3_column_type(stmt, column) != SQLITE_NULL) {
-                                if((def->fields[i].def->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
-                                    switch(def->fields[i].def->fields[0].type) {
+                                if((targetdef->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
+                                    switch(targetdef->fields[0].type) {
                                         case dbsimple_INT:
                                         case dbsimple_UINT:
+                                            assert(sqlite3_column_type(stmt, column) == SQLITE_INTEGER);
                                             targetkeyid = sqlite3_column_int(stmt, column++);
                                             break;
                                         case dbsimple_LONGINT:
                                         case dbsimple_ULONGINT:
+                                            assert(sqlite3_column_type(stmt, column) == SQLITE_INTEGER);
                                             targetkeyid = sqlite3_column_int64(stmt, column++);
                                             break;
                                         case dbsimple_STRING:
+                                            assert(sqlite3_column_type(stmt, column) == SQLITE_TEXT);
                                             targetkeystr = strdup((char*)sqlite3_column_text(stmt, column++));
                                             break;
                                         default:
@@ -357,43 +383,49 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
                                     }
                                 } else
                                     abort();
-                                dbsimple__assignreference(&session->basesession, &def->fields[i], targetkeyid, targetkeystr, object);
+                                dbsimple__assignreference(&session->basesession, field, targetkeyid, targetkeystr, object);
                             } else {
                                 ++column;
-                                *(void**)&(object->data[def->fields[i].fieldoffset]) = NULL;
+                                *(void**)&(object->data[field->fieldoffset]) = NULL;
                             }
                             break;
                         case dbsimple_BACKREFERENCE:
                             targetkeyid = 0;
                             targetkeystr = NULL;
-                            if((def->fields[i].def->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
+                            if((targetdef->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
                                 if(sqlite3_column_type(stmt, column) != SQLITE_NULL) {
-                                    switch(def->fields[i].def->fields[0].type) {
+                                    switch(targetdef->fields[0].type) {
                                         case dbsimple_INT:
                                         case dbsimple_UINT:
+                                            assert(sqlite3_column_type(stmt, column) == SQLITE_INTEGER);
                                             targetkeyid = sqlite3_column_int(stmt, column++);
                                             break;
                                         case dbsimple_LONGINT:
                                         case dbsimple_ULONGINT:
+                                            assert(sqlite3_column_type(stmt, column) == SQLITE_INTEGER);
                                             targetkeyid = sqlite3_column_int64(stmt, column++);
                                             break;
                                         case dbsimple_STRING:
+                                            assert(sqlite3_column_type(stmt, column) == SQLITE_TEXT);
                                             targetkeystr = strdup((char*)sqlite3_column_text(stmt, column++));
                                             break;
                                         default:
                                             abort();
                                     }
-                                    dbsimple__assignbackreference(&session->basesession, def->fields[i].def, targetkeyid, targetkeystr, &def->fields[i], object);
+                                    dbsimple__assignbackreference(&session->basesession, field->def, targetkeyid, targetkeystr, &(*def)->fields[i], object);
                                 } else {
                                     ++column;
                                 }
                             } else {
-                                dbsimple__assignbackreference(&session->basesession, def->fields[i].def, targetkeyid, targetkeystr, &def->fields[i], object);
+                                dbsimple__assignbackreference(&session->basesession, field->def, targetkeyid, targetkeystr, &(*def)->fields[i], object);
                             }
                             break;
                         case dbsimple_MASTERREFERENCES:
+                        case dbsimple_STUBREFERENCES:
                         case dbsimple_OPENREFERENCES:
                             break;
+                        default:
+                            abort();
                     }
                 }
                 break;
@@ -412,6 +444,7 @@ fetchobject(struct dbsimple_definition* def, dbsimple_session_type session)
                 break;
         }
     } while(status==SQLITE_BUSY||status==SQLITE_ROW);
+    sqlite3_reset(stmt);
 }
 
 static int
@@ -423,23 +456,25 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
     const char* cstrvalue;
     struct object* targetobj;
     void* targetptr;
-    struct dbsimple_field* field;
+    struct dbsimple_fieldimpl* field;
+    struct dbsimple_definitionimpl* type;
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
     column = 0;
-    for(int i = 0; i<object->type->nfields; i++) {
+    type = *(object->type);
+    for(int i = 0; i<type->nfields; i++) {
         if(style == 0) {
-            if((object->type->flags & dbsimple_FLAG_HASREVISION) ? i>=2 : i>=1)
+            if((type->flags & dbsimple_FLAG_HASREVISION) ? i>=2 : i>=1)
                 break;
-            field = &object->type->fields[i];
+            field = &type->fields[i];
         } else if(style == -1) {
-            if(i+2<object->type->nfields)
-                field = &object->type->fields[i+2];
+            if(i+2<type->nfields)
+                field = &type->fields[i+2];
             else
-                field = &object->type->fields[i-(object->type->nfields-2)];
+                field = &type->fields[i-(type->nfields-2)];
         } else {
-            field = &object->type->fields[i];
+            field = &type->fields[i];
         }
         switch(field->type) {
             case dbsimple_INT:
@@ -449,7 +484,7 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
                         intvalue = object->keyid;
                         break;
                     case 1:
-                        if(object->type->flags & dbsimple_FLAG_HASREVISION) {
+                        if(type->flags & dbsimple_FLAG_HASREVISION) {
                             intvalue = object->revision;
                             break;
                         }
@@ -467,7 +502,7 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
                         longvalue = object->keyid;
                         break;
                     case 1:
-                        if(object->type->flags & dbsimple_FLAG_HASREVISION) {
+                        if(type->flags & dbsimple_FLAG_HASREVISION) {
                             longvalue = object->revision;
                             break;
                         }
@@ -504,6 +539,7 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
                 break;
             case dbsimple_BACKREFERENCE:
             case dbsimple_MASTERREFERENCES:
+            case dbsimple_STUBREFERENCES:
             case dbsimple_OPENREFERENCES:
                 break;
         }
@@ -515,11 +551,16 @@ static int
 persistobject(struct object* object, dbsimple_session_type session)
 {
     int affected = -1;
-    sqlite3_stmt* insertStmt = session->currentStmts[object->type->implementation.i*3+1];
-    sqlite3_stmt* deleteStmt = session->currentStmts[object->type->implementation.i*3+2];  
+    sqlite3_stmt* insertStmt = getStmtInsert(session, object->type);
+    sqlite3_stmt* deleteStmt = getStmtDelete(session, object->type);
     switch(object->state) {
+        case OBJNULL:
+            assert(!"internal error");
         case OBJUNKNOWN:
-            abort();
+            if(object->data) {
+                assert(!"internal error");
+            }
+            break;
         case OBJCLEAN:
             break;
         case OBJNEW:
@@ -553,9 +594,10 @@ commitdata(dbsimple_session_type session)
     sqlite3_reset(session->beginStmt);
     eatResult(session->handle, session->beginStmt, NULL);
 
-    for(int i=0; i<session->connection->baseconnection.ndefinitions; i++) {
-        if((session->connection->baseconnection.definitions[i]->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON) {
-            object = dbsimple__getobject(&session->basesession, session->connection->baseconnection.definitions[i], 0, NULL);
+    for(int i=0; i<session->currentPlan->ndefinitions; i++) {
+        if((session->currentPlan->definitions[i]->flags & dbsimple_FLAG_SINGLETON) == dbsimple_FLAG_SINGLETON) {
+            object = dbsimple__getobject(&session->basesession, OBJNULL, &(session->currentPlan->definitions[i]), 0, NULL);
+            assert(object && object->data);
             dbsimple__committraverse(&session->basesession, object);
         }
     }
@@ -567,10 +609,21 @@ commitdata(dbsimple_session_type session)
     return 0;
 }
 
+static void
+disposecurrent(dbsimple_session_type session)
+{
+    if(session->currentStmts) {
+        for(int i=0; i<(session->currentPlan->ndefinitions+1)*3; i++) {
+            if(session->currentStmts[i])
+                sqlite3_finalize(session->currentStmts[i]);
+        }
+        free(session->currentStmts);
+        session->currentStmts = NULL;
+    }
+}
+
 static int
-openconnection(char* location,
-               __attribute__((unused)) int nqueries, __attribute__((unused)) const char* const** queries,
-               dbsimple_connection_type* connectionPtr)
+openconnection(char* location, int nfetchplans, dbsimple_fetchplan_array fetchplans, dbsimple_connection_type* connectionPtr)
 {
     int returnCode = 0;
     int errorCode;
@@ -583,6 +636,8 @@ openconnection(char* location,
         if(errorCode != SQLITE_CANTOPEN)
             return -1;
     }
+    (void)fetchplans;
+    (void)nfetchplans;
 
     *connectionPtr = malloc(sizeof(struct dbsimple_connection_struct));
     (*connectionPtr)->handle = handle;
@@ -592,6 +647,7 @@ openconnection(char* location,
 static int
 closeconnection(dbsimple_connection_type connection)
 {
+    sqlite3_db_release_memory(connection->handle);
     sqlite3_close(connection->handle);
     free(connection);
     return 0;
@@ -625,117 +681,96 @@ opensession(dbsimple_connection_type connection, dbsimple_session_type* sessionP
     *sessionPtr = malloc(sizeof(struct dbsimple_session_struct));
     (*sessionPtr)->connection = connection;
     (*sessionPtr)->handle = connection->handle;
-    (*sessionPtr)->nstmts = connection->baseconnection.nqueries;
-    (*sessionPtr)->stmts = malloc(sizeof(sqlite3_stmt**) * (*sessionPtr)->nstmts);
     (*sessionPtr)->beginStmt = beginStmt;
     (*sessionPtr)->commitStmt = commitStmt;
     (*sessionPtr)->rollbackStmt = rollbackStmt;
-    for(int i=0; i<connection->baseconnection.nqueries; i++) {
-        (*sessionPtr)->stmts[i] = NULL;
-    }
+    (*sessionPtr)->currentStmts = NULL;
     return returnCode;
 }
 
 static int
 closesession(dbsimple_session_type session)
 {
-    sqlite3_stmt** stmts;
-    for(int i=0; i<session->nstmts; i++) {
-        if(session->stmts[i]) {
-            for(stmts=session->stmts[i]; *stmts; stmts++) {
-                sqlite3_finalize(*stmts);
-            }
-        }
-    }
+    disposecurrent(session);
     sqlite3_finalize(session->beginStmt);
     sqlite3_finalize(session->commitStmt);
     sqlite3_finalize(session->rollbackStmt);
-    free(session->stmts);
     free(session);
     return 0;
 }
 
 static int
-syncdata(dbsimple_session_type session, const char* const** query, void* data)
+syncdata(dbsimple_session_type session, struct dbsimple_fetchplan_struct* fetchplan, void* data)
 {
-    sqlite3_stmt** stmts = NULL;
-    int stmtindex;
-    int errorCode;
-    char* errorMessage;
-    stmtindex = query - session->connection->baseconnection.queries;
-    if(stmtindex >= 0 && stmtindex < session->nstmts) {
-        stmts = session->stmts[stmtindex];
-        if(stmts == NULL) {
-            int count = 0;
-            while((*query)[count])
-                ++count;
-            stmts = session->stmts[stmtindex] = malloc(sizeof(sqlite3_stmt*) * (count+1));
-            for(int i=0; i<count; i++) {
-                if (SQLITE_OK != (errorCode = sqlite3_prepare_v2(session->handle, (*query)[i], strlen((*query)[i])+1, &stmts[i], NULL))) {
-                    reportError(session->handle, "");
-                    while(i-- > 0) {
-                      sqlite3_finalize(stmts[i]);
-                    }
-                    free(session->stmts[stmtindex]);
-                    session->stmts[stmtindex] = NULL;
-                    return -1;
-                } else {
-                    sqlite3_reset(stmts[i]);
-                    sqlite3_clear_bindings(stmts[i]);
-                    // sqlite3_bind_text(stmt, 1, arg, -1, SQLITE_STATIC);
-                    eatResult(session->handle, stmts[i], data);
-                }
-            }
-            stmts[count] = NULL;
-        } else {
-          for(int i=0; stmts[i]; i++) {
-            sqlite3_reset(stmts[i]);
-            sqlite3_clear_bindings(stmts[i]);
-            eatResult(session->handle, stmts[i], data);
-          }
-        }
-    } else {
-        if (SQLITE_OK != (errorCode = sqlite3_exec(session->handle, **query, gobbleResult, NULL, &errorMessage))) {
+    int qindex;
+    int nqueries = 0;
+    sqlite3_stmt* stmt;
+    while(fetchplan->queries[nqueries])
+        ++nqueries;
+    session->currentPlan  = fetchplan;
+    disposecurrent(session);
+    session->currentStmts = malloc(sizeof(sqlite3_stmt*) * (fetchplan->ndefinitions+1) * 3);
+    session->currentStmts[0] = NULL;
+    session->currentStmts[1] = NULL;
+    session->currentStmts[2] = NULL;
+    qindex = 3; // skip the first set
+    for(int i=0; i<nqueries && qindex<(fetchplan->ndefinitions+1)*3; i++,qindex++) {
+        if(SQLITE_OK != sqlite3_prepare_v2(session->handle, fetchplan->queries[i], strlen(fetchplan->queries[i])+1, &stmt, NULL)) {
             reportError(session->handle, "");
+            while(qindex-- > 0) {
+                if(session->currentStmts[qindex])
+                    sqlite3_finalize(session->currentStmts[qindex]);
+            }
+            free(session->currentStmts);
+            session->currentStmts = NULL;
             return -1;
+        } else {
+            sqlite3_reset(stmt);
+            sqlite3_clear_bindings(stmt);
+            // sqlite3_bind_text(stmt, 1, arg, -1, SQLITE_STATIC);
+            session->currentStmts[qindex] = stmt;
+            eatResult(session->handle, session->currentStmts[qindex], data);
         }
     }
+    for(; qindex < (fetchplan->ndefinitions+1)*3; qindex++)
+            session->currentStmts[qindex] = NULL;
     return 0;
 }
 
 static void*
-fetchdata(dbsimple_session_type session, const char* const** query, __attribute__((unused))  va_list args)
+fetchdata(dbsimple_session_type session, struct dbsimple_fetchplan_struct* fetchplan, __attribute__((unused))  va_list args)
 {
-    sqlite3_stmt** stmts = NULL;
-    int stmtindex;
-    int errorCode;
-    stmtindex = query - session->connection->baseconnection.queries;
-    if(stmtindex >=0 && stmtindex < session->nstmts) {
-        stmts = session->stmts[stmtindex];
-        if(stmts == NULL) {
-            int count = 0;
-            while((*query)[count])
-                ++count;
-            stmts = session->stmts[stmtindex] = malloc(sizeof (sqlite3_stmt*) * (count+1));
-            for(int i = 0; i<count; i++) {
-                if(SQLITE_OK != (errorCode = sqlite3_prepare_v2(session->handle, (*query)[i], strlen((*query)[i])+1, &stmts[i], NULL))) {
-                    reportError(session->handle, (*query)[i]);
-                    while(i-- >0) {
-                        sqlite3_finalize(stmts[i]);
-                    }
-                    free(session->stmts[stmtindex]);
-                    session->stmts[stmtindex] = NULL;
-                }
+    int qindex;
+    int nqueries = 0;
+    sqlite3_stmt* stmt;
+    while(fetchplan->queries[nqueries])
+        ++nqueries;
+    disposecurrent(session);
+    session->currentPlan  = fetchplan;
+    session->currentStmts = malloc(sizeof(sqlite3_stmt*) * (fetchplan->ndefinitions+1) * 3);
+    session->currentStmts[0] = NULL;
+    session->currentStmts[1] = NULL;
+    session->currentStmts[2] = NULL;
+    qindex = 3; // skip the first set
+    if(nqueries > fetchplan->ndefinitions * 3)
+        nqueries = fetchplan->ndefinitions * 3;
+    for(int i=0; i<nqueries; i++,qindex++) {
+        if(SQLITE_OK != sqlite3_prepare_v2(session->handle, fetchplan->queries[i], strlen(fetchplan->queries[i])+1, &stmt, NULL)) {
+            reportError(session->handle, "Unable to build query");
+            while(i-- > 0) {
+                if(session->currentStmts[qindex])
+                    sqlite3_finalize(session->currentStmts[qindex]);
             }
-            stmts[count] = NULL;
+            free(session->currentStmts);
+            session->currentStmts = NULL;
+            return NULL;
+        } else {
+            sqlite3_reset(stmt);
+            sqlite3_clear_bindings(stmt);
+            session->currentStmts[qindex] = stmt;
         }
-        for(int i=stmtindex=0; i<session->connection->baseconnection.ndefinitions; i++)
-            if((session->connection->baseconnection.definitions[i]->flags & dbsimple_FLAG_SINGLETON) != dbsimple_FLAG_SINGLETON) {
-                session->connection->baseconnection.definitions[i]->implementation.i = stmtindex++;
-            }
-        session->currentStmts = stmts;
-        return dbsimple__fetch(&session->basesession, session->connection->baseconnection.ndefinitions, session->connection->baseconnection.definitions);
-    } else {
-        return NULL;
     }
+    for(; qindex < (fetchplan->ndefinitions+1)*3; qindex++)
+            session->currentStmts[qindex] = NULL;
+    return dbsimple__fetch(&session->basesession, fetchplan->ndefinitions, fetchplan->definitions);
 }

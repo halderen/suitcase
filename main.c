@@ -176,5 +176,6 @@ main(int argc, char* argv[])
     }
     free(connectstr);
    
+    settings_free(cfghandle);
     return 0;
 }

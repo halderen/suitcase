@@ -19,7 +19,10 @@ suitcase_LDFLAGS = @MYSQL_LDFLAGS@ @SQLITE3_LDFLAGS@
 suitcase_LDADD = schema_mysql.o schema_sqlite3.o libsuitcase.la $(LIBCURL) -ldl @PTHREAD_LIBS@
 
 check_PROGRAMS = test
-lib_LTLIBRARIES = libsuitcase.la libmoduledbmysql.la libmoduleexectcl.la
+lib_LTLIBRARIES = libsuitcase.la libmoduleexectcl.la
+if HAVE_MYSQL
+lib_LTLIBRARIES += libmoduledbmysql.la 
+endif
 
 bin_PROGRAMS = suitcase
 

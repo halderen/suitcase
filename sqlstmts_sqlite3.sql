@@ -175,6 +175,13 @@ UPDATE databaseVersion set version = 2;
 SELECT count(version) FROM databaseVersion WHERE version >= 2;
 
 -- default
+SELECT id, rev, locator, repository, state, bits, algorithm, role, inception, isRevoked, keyType, backup, policyId FROM hsmKey;
+
+INSERT OR REPLACE INTO hsmKey ( id, rev, policyId, locator, state, bits, algorithm, role, inception, isRevoked, keyType, repository, backup )
+VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+DELETE FROM hsmKey WHERE id = ? AND rev = ?;
+
 SELECT id, rev, name, description, passthrough,
        signaturesResign, signaturesRefresh, signaturesJitter, signaturesInceptionOffset,
        signaturesValidityDefault, signaturesValidityDenial, signaturesValidityKeyset, signaturesMaxZoneTtl,
@@ -201,20 +208,13 @@ VALUES ( ?, ?, ?, ?, ?,
 
 DELETE FROM policy WHERE id = ? AND rev = ?;
 
-SELECT id, rev, policyId, role, algorithm, bits, lifetime, repository, standby, manualRollover, rfc5011, minimize
+SELECT id, rev, policyId, policyId, repository, role, algorithm, bits, lifetime, standby, manualRollover, rfc5011, minimize
 FROM policyKey;
 
 INSERT OR REPLACE INTO policyKey ( id, rev, policyId, role, algorithm, bits, lifetime, repository, standby, manualRollover, rfc5011, minimize )
 VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
 
 DELETE FROM policykey WHERE id = ? AND rev = ?;
-
-SELECT id, rev, locator, repository, state, bits, algorithm, role, inception, isRevoked, keyType, backup, policyId FROM hsmKey;
-
-INSERT OR REPLACE INTO hsmKey ( id, rev, policyId, locator, state, bits, algorithm, role, inception, isRevoked, keyType, repository, backup )
-VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-
-DELETE FROM hsmKey WHERE id = ? AND rev = ?;
 
 SELECT id, rev, policyId, policyId, name, nextChange, signconfPath,
        inputAdapterUri, inputAdapterType, outputAdapterUri, outputAdapterType,
@@ -230,7 +230,7 @@ VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 DELETE FROM zone WHERE id = ? AND rev = ?;
 
-SELECT id, rev, zoneId, hsmKeyId,
+SELECT id, rev, zoneId, zoneId, hsmKeyId,
        algorithm, inception, role, introducing, shouldRevoke, standby,
        activeZsk, publish, activeKsk, dsAtParent, keytag, minimize
 FROM keyData;
@@ -249,7 +249,6 @@ INSERT OR REPLACE INTO keyState ( id, rev, keyDataId, type, state, lastChange, m
 VALUES ( ?, ?, ?, ?, ?, ?, ?, ? );
 
 DELETE FROM keyState WHERE id = ? AND rev = ?;
-
 
 SELECT id, rev, fromKeyDataId, toKeyDataId, type
 FROM keyDependency;

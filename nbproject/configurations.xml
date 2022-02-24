@@ -2,6 +2,7 @@
 <configurationDescriptor version="100">
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="." name="0">
+      <in>command.c</in>
       <in>commandline.c</in>
       <in>daemonize.c</in>
       <in>dbsimple.c</in>
@@ -12,8 +13,13 @@
       <in>example.c</in>
       <in>exampledb.c</in>
       <in>examplelua.c</in>
+      <in>execute.c</in>
+      <in>executelua.c</in>
+      <in>executetcl.c</in>
+      <in>getopt.c</in>
       <in>janitor.c</in>
       <in>logging.c</in>
+      <in>longgetopt.c</in>
       <in>main.c</in>
       <in>module.c</in>
       <in>moduledbmysql.c</in>
@@ -44,8 +50,10 @@
         <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
       <flagsDictionary>
-        <element flagsID="0" commonFlags="-g -O2"/>
-        <element flagsID="1" commonFlags="-g -O2 -fPIC"/>
+        <element flagsID="0" commonFlags="-g"/>
+        <element flagsID="1" commonFlags="-g -O2"/>
+        <element flagsID="2" commonFlags="-g -O2 -fPIC"/>
+        <element flagsID="3" commonFlags="-g -fPIC"/>
       </flagsDictionary>
       <codeAssistance>
       </codeAssistance>
@@ -70,43 +78,48 @@
           <preBuildCommand>./configure CC=${IDE_CC} CXX=${IDE_CXX} CFLAGS="-g3 -gdwarf-2" CXXFLAGS="-g3 -gdwarf-2"</preBuildCommand>
         </preBuild>
       </makefileType>
+      <item path="command.c" ex="false" tool="0" flavor2="2">
+      </item>
       <item path="commandline.c" ex="false" tool="0" flavor2="2">
         <cTool flags="0">
           <incDir>
-            <pElem>/usr/include/mysql</pElem>
-            <pElem>/usr/include/mysql/mysql</pElem>
             <pElem>/usr/include</pElem>
           </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/usr/local/etc</Elem>
+          </preprocessorList>
         </cTool>
       </item>
       <item path="daemonize.c" ex="false" tool="0" flavor2="3">
         <cTool flags="0">
           <incDir>
-            <pElem>/usr/include/mysql</pElem>
-            <pElem>/usr/include/mysql/mysql</pElem>
             <pElem>/usr/include</pElem>
           </incDir>
-        </cTool>
-      </item>
-      <item path="dbsimple.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
           <preprocessorList>
-            <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
           </preprocessorList>
         </cTool>
       </item>
+      <item path="dbsimple.c" ex="false" tool="0" flavor2="3">
+        <cTool flags="2">
+          <preprocessorList>
+            <Elem>PIC</Elem>
+            <Elem>SYSCONFDIR=/etc</Elem>
+          </preprocessorList>
+        </cTool>
+      </item>
       <item path="dbsimple_dummy.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool flags="1">
           <incDir>
-            <pElem>/usr/include/mysql</pElem>
-            <pElem>/usr/include/mysql/mysql</pElem>
             <pElem>/usr/include</pElem>
           </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/etc</Elem>
+          </preprocessorList>
         </cTool>
       </item>
       <item path="dbsimple_mysql.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
+        <cTool flags="2">
           <preprocessorList>
             <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
@@ -114,24 +127,25 @@
         </cTool>
       </item>
       <item path="dbsimple_sqlite3.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool flags="1">
           <incDir>
-            <pElem>/usr/include/mysql</pElem>
-            <pElem>/usr/include/mysql/mysql</pElem>
             <pElem>/usr/include</pElem>
           </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/etc</Elem>
+          </preprocessorList>
         </cTool>
       </item>
       <item path="dbsimplebase.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
+        <cTool flags="2">
           <preprocessorList>
             <Elem>PIC</Elem>
-            <Elem>SYSCONFDIR=/usr/local/etc</Elem>
+            <Elem>SYSCONFDIR=/etc</Elem>
           </preprocessorList>
         </cTool>
       </item>
       <item path="example.c" ex="false" tool="0" flavor2="2">
-        <cTool flags="0">
+        <cTool flags="1">
           <incDir>
             <pElem>/usr/include/mysql</pElem>
             <pElem>/usr/include/mysql/mysql</pElem>
@@ -140,7 +154,17 @@
         </cTool>
       </item>
       <item path="exampledb.c" ex="false" tool="0" flavor2="2">
-        <cTool flags="0">
+        <cTool flags="1">
+          <incDir>
+            <pElem>/usr/include</pElem>
+          </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/etc</Elem>
+          </preprocessorList>
+        </cTool>
+      </item>
+      <item path="examplelua.c" ex="false" tool="0" flavor2="2">
+        <cTool flags="1">
           <incDir>
             <pElem>/usr/include/mysql</pElem>
             <pElem>/usr/include/mysql/mysql</pElem>
@@ -148,17 +172,47 @@
           </incDir>
         </cTool>
       </item>
-      <item path="examplelua.c" ex="false" tool="0" flavor2="0">
+      <item path="execute.c" ex="false" tool="0" flavor2="2">
         <cTool flags="0">
+          <incDir>
+            <pElem>/usr/include</pElem>
+          </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/usr/local/etc</Elem>
+          </preprocessorList>
+        </cTool>
+      </item>
+      <item path="executelua.c" ex="false" tool="0" flavor2="2">
+        <cTool flags="0">
+          <incDir>
+            <pElem>/usr/include</pElem>
+          </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/usr/local/etc</Elem>
+          </preprocessorList>
+        </cTool>
+      </item>
+      <item path="executetcl.c" ex="false" tool="0" flavor2="2">
+        <cTool flags="1">
           <incDir>
             <pElem>/usr/include/mysql</pElem>
             <pElem>/usr/include/mysql/mysql</pElem>
             <pElem>/usr/include</pElem>
           </incDir>
+        </cTool>
+      </item>
+      <item path="getopt.c" ex="false" tool="0" flavor2="2">
+        <cTool flags="0">
+          <incDir>
+            <pElem>/usr/include</pElem>
+          </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/usr/local/etc</Elem>
+          </preprocessorList>
         </cTool>
       </item>
       <item path="janitor.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
+        <cTool flags="3">
           <preprocessorList>
             <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
@@ -166,20 +220,31 @@
         </cTool>
       </item>
       <item path="logging.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
+        <cTool flags="3">
           <preprocessorList>
             <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
           </preprocessorList>
         </cTool>
       </item>
-      <item path="main.c" ex="false" tool="0" flavor2="3">
+      <item path="longgetopt.c" ex="false" tool="0" flavor2="2">
         <cTool flags="0">
           <incDir>
-            <pElem>/usr/include/mysql</pElem>
-            <pElem>/usr/include/mysql/mysql</pElem>
             <pElem>/usr/include</pElem>
           </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/usr/local/etc</Elem>
+          </preprocessorList>
+        </cTool>
+      </item>
+      <item path="main.c" ex="false" tool="0" flavor2="3">
+        <cTool flags="1">
+          <incDir>
+            <pElem>/usr/include</pElem>
+          </incDir>
+          <preprocessorList>
+            <Elem>SYSCONFDIR=/etc</Elem>
+          </preprocessorList>
         </cTool>
       </item>
       <item path="module.c" ex="false" tool="0" flavor2="2">
@@ -194,7 +259,7 @@
         </cTool>
       </item>
       <item path="moduledbmysql.c" ex="false" tool="0" flavor2="2">
-        <cTool flags="1">
+        <cTool flags="2">
           <preprocessorList>
             <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
@@ -202,7 +267,7 @@
         </cTool>
       </item>
       <item path="modules.c" ex="false" tool="0" flavor2="2">
-        <cTool flags="1">
+        <cTool flags="3">
           <preprocessorList>
             <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
@@ -210,7 +275,7 @@
         </cTool>
       </item>
       <item path="mymodule1.c" ex="false" tool="0" flavor2="2">
-        <cTool flags="1">
+        <cTool flags="2">
           <preprocessorList>
             <Elem>DYNAMIC_MYSQL</Elem>
             <Elem>PIC</Elem>
@@ -219,7 +284,7 @@
         </cTool>
       </item>
       <item path="mymodule2.c" ex="false" tool="0" flavor2="2">
-        <cTool flags="1">
+        <cTool flags="2">
           <preprocessorList>
             <Elem>DYNAMIC_MYSQL</Elem>
             <Elem>PIC</Elem>
@@ -228,7 +293,7 @@
         </cTool>
       </item>
       <item path="settings.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
+        <cTool flags="3">
           <preprocessorList>
             <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
@@ -236,7 +301,7 @@
         </cTool>
       </item>
       <item path="sqlstmts.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="0">
+        <cTool flags="1">
           <incDir>
             <pElem>/usr/include/mysql</pElem>
             <pElem>/usr/include/mysql/mysql</pElem>
@@ -247,7 +312,7 @@
         </cTool>
       </item>
       <item path="tree.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
+        <cTool flags="3">
           <preprocessorList>
             <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
@@ -255,7 +320,7 @@
         </cTool>
       </item>
       <item path="utilities.c" ex="false" tool="0" flavor2="3">
-        <cTool flags="1">
+        <cTool flags="3">
           <preprocessorList>
             <Elem>PIC</Elem>
             <Elem>SYSCONFDIR=/usr/local/etc</Elem>
