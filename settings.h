@@ -35,13 +35,30 @@ extern int settings_setcontext(settings_handle handle, const char* fmt, ...);
 extern int settings_clone(settings_handle handle, settings_handle* copy);
 extern void settings_free(settings_handle handle);
 extern int settings_getlong(settings_handle, long* resultvalue, const long* defaultvalue, const char* fmt,...);
+extern int settings_getint(settings_handle, int* resultvalue, const int* defaultvalue, const char* fmt,...);
+extern int settings_getbool(settings_handle, int* resultvalue, const char* fmt,...);
 extern int settings_getenum(settings_handle, int* resultvalue, const int* defaultvalue, const char** enums, const char* fmt, ...);
 extern int settings_getenum2(settings_handle, int* resultvalue, const int* defaultvalue, const char** enumstrings, const int* enumvalues, const char* fmt, ...);
 extern int settings_getcount(settings_handle, long* resultvalue, const long* defaultvalue, const char* fmt,...);
 extern int settings_getnamed(settings_handle handle, long* resultvalue, const long* defaultvalue, int (*translate)(const char*,long*resultvalue), const char* fmt, ...);
-extern int settings_getstring(settings_handle, char** resultvalue, const char* defaultvalue, const char* fmt, ...);
+extern int settings_getstringdefault(settings_handle handle, char** resultvalue, const char* defaultvalue, const char* fmt, ...);
+extern int settings_getstring(settings_handle, char** resultvalue, const char** defaultvalue, const char* fmt, ...);
 extern int settings_getcompound(settings_handle, int* resultvalue, const char* fmt, ...);
 
 extern int settings_configure(settings_handle* cfghandleptr, char* sysconfdir, char* sysconffile, int cmdline_verbosity);
+
+extern void* settings_value_NULL;
+
+#ifdef settings__INTERNAL
+extern char* settings__getscalar_yaml(node_type node);
+extern int settings__nodecount_yaml(node_type node);
+extern document_type settings__access_yaml(document_type document, int fd);
+extern node_type settings__parselocate_yaml(document_type document, node_type node, const char* fmt, va_list ap, const char** lastp);
+
+extern char* settings__getscalar_xml(node_type node);
+extern int settings__nodecount_xml(node_type node);
+extern document_type settings__access_xml(document_type document, int fd);
+extern node_type settings__parselocate_xml(document_type document, node_type node, const char* fmt, va_list ap, const char** lastp);
+#endif
 
 #endif

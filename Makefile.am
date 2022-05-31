@@ -43,10 +43,14 @@ libsuitcase_la_SOURCES += janitor.c janitor.h
 libsuitcase_la_SOURCES += logging.c logging.h
 libsuitcase_la_SOURCES += utilities.c utilities.h
 libsuitcase_la_SOURCES += tree.c tree.h
-libsuitcase_la_SOURCES += settings.c settings.h
+libsuitcase_la_SOURCES += settings.c settings.h settings_yaml.c settings_xml.c
 libsuitcase_la_SOURCES += dbsimple.h dbsimple.c dbsimplebase.h dbsimplebase.c
+libsuitcase_la_CFLAGS   = $(XML_CPPFLAGS) $(AM_CFLAGS)
+libsuitcase_la_LIBADD   = $(XML_LIBS)
 suitcase_SOURCES  = main.c exampledb.c exampledb.h
+if HAVE_LUA
 suitcase_SOURCES += executelua.c executelua.h
+endif
 suitcase_SOURCES += commandline.c commandline.h
 suitcase_SOURCES += daemonize.c daemonize.h
 suitcase_SOURCES += execute.c execute.h
@@ -64,18 +68,18 @@ suitcase_LDFLAGS += @LUA_LIB@
 
 if HAVE_MYSQL
 libmoduledbmysql_la_SOURCES = moduledbmysql.c dbsimple_mysql.c schema_mysql.h
-libmoduledbmysql_la_LIDADD  = libsuitcase.la @MYSQL_LDFLAGS@
+libmoduledbmysql_la_LIBADD  = libsuitcase.la @MYSQL_LDFLAGS@
 endif
 
 if HAVE_TCL
 libmoduleexectcl_la_SOURCES = executetcl.c executetcl.h
-libmoduleexectcl_la_LIDADD  = libsuitcase.la -ltcl
+libmoduleexectcl_la_LIBADD  = libsuitcase.la -ltcl
 endif
 
 test_SOURCES = tests/suitcasetest.c schema_mysql.h
 test_CFLAGS = @CUNIT_INCLUDES@ @MYSQL_CFLAGS@
 test_AM_LDLIBS = @CUNIT_LIBS@
-test_LDFLAGS = @MYSQL_LDFLAGS@
+test_LDFLAGS = @MYSQL_LDFLAGS@ $(XML_LIBS)
 test_LDADD = @CUNIT_LIBS@ schema_mysql.o -lmysqlclient
 
 TESTS = $(check_PROGRAMS)

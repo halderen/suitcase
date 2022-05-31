@@ -41,7 +41,7 @@ execute(settings_handle commands, char* cmdname, ...)
     va_list ap;
     char* modname;
     char* cmdsource;
-    char* using;
+    char* using = NULL;
     int found;
     const void* table;
     int rcode = 0; 

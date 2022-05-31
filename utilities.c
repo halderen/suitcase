@@ -94,3 +94,9 @@ alloc(void* p, size_t size, int* countptr, int newcount)
             return -1;
     }
 }
+
+char*
+dupstr(const char* ptr)
+{
+    return (ptr ? strdup(ptr) : NULL);
+}
