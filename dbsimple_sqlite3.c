@@ -34,7 +34,7 @@
 #if !defined(HAVE_SQLITE3) || defined(DYNAMIC_SQLITE3)
 #include <dlfcn.h>
 #endif
-#ifdef HAVE_SQLITE3_H
+#if (defined(HAVE_SQLITE3_H) || defined(HAVE_SQLITE3))
 #include <sqlite3.h>
 #endif
 
@@ -42,14 +42,17 @@
 #include "tree.h"
 #include "dbsimple.h"
 #include "dbsimplebase.h"
+#include "logging.h"
 
 static int initialize(void);
 static void reportError(sqlite3* handle, const char* message);
 
+static logger_cls_type logger = LOGGER_INITIALIZE(__FILE__);        
+
 #ifndef HAVE_SQLITE3_H
 
 int dbsimple_sqlite3_initialize(char* hint) {
-    return -1
+    return -1;
 }
 
 int dbsimple_sqlite3_finalize(void) {
@@ -231,7 +234,8 @@ static int initialize(void)
 
 static void reportError(sqlite3* handle, const char* message)
 {
-    fprintf(stderr, "SQLERROR%s%s: %s (%d, %d)\n", ((message&&*message)?" ":""), message, sqlite3_errmsg(handle), sqlite3_errcode(handle), sqlite3_extended_errcode(handle));
+    logger_message(&logger,logger_noctx,logger_DEBUG, "%s%s %s (%d, %d)\n",
+                   (message?message:""), ((message&&*message)?":":""), sqlite3_errmsg(handle), sqlite3_errcode(handle), sqlite3_extended_errcode(handle));
 }
 
 int gobbleResult(void* a, int b, char**c, char**d)
@@ -248,6 +252,7 @@ static int eatResult(sqlite3* handle, sqlite3_stmt* stmt, void* data)
     int status;
     int column;
     int affected = 0;
+    logger_message(&logger,logger_noctx,logger_DEBUG, "statement \"%s\"\n",sqlite3_expanded_sql(stmt));
     do {
         switch ((status = sqlite3_step(stmt))) {
             case SQLITE_ROW:
@@ -313,6 +318,7 @@ fetchobject(struct dbsimple_definitionimpl** def, dbsimple_session_type session)
     sqlite3* handle = session->connection->handle;
     sqlite3_stmt* stmt = getStmtFetch(session, def);
     sqlite3_reset(stmt);
+    logger_message(&logger,logger_noctx,logger_DEBUG, "statement \"%s\"\n",sqlite3_expanded_sql(stmt));
 
     do {
         switch((status = sqlite3_step(stmt))) {
@@ -534,10 +540,12 @@ bindstatement(dbsimple_session_type session, sqlite3_stmt* stmt, struct object* 
                         intvalue = targetobj->keyid;
                         sqlite3_bind_int(stmt, ++column, intvalue);
                     }
-                } else
+                } else {
                     sqlite3_bind_null(stmt, ++column);
+                }
                 break;
             case dbsimple_BACKREFERENCE:
+                break;
             case dbsimple_MASTERREFERENCES:
             case dbsimple_STUBREFERENCES:
             case dbsimple_OPENREFERENCES:
@@ -567,18 +575,18 @@ persistobject(struct object* object, dbsimple_session_type session)
             object->revision = 1;
             object->keyid = random();
             bindstatement(session, insertStmt, object, 1);
-            eatResult(session->handle, insertStmt, NULL);
+            affected = eatResult(session->handle, insertStmt, NULL);
             break;
         case OBJMODIFIED:
             bindstatement(session, deleteStmt, object, 0);
-            eatResult(session->handle, deleteStmt, NULL);
+            affected = eatResult(session->handle, deleteStmt, NULL);
             object->revision += 1;
             bindstatement(session, insertStmt, object, 1);
             eatResult(session->handle, insertStmt, NULL);
             break;
         case OBJREMOVED:
             bindstatement(session, deleteStmt, object, 0);
-            eatResult(session->handle, deleteStmt, &affected);
+            affected = eatResult(session->handle, deleteStmt, NULL);
             object->data = NULL;
             if(affected != 1)
                 return -1;
@@ -590,6 +598,7 @@ persistobject(struct object* object, dbsimple_session_type session)
 static int
 commitdata(dbsimple_session_type session)
 {
+    int affected;
     struct object* object;
     sqlite3_reset(session->beginStmt);
     eatResult(session->handle, session->beginStmt, NULL);
@@ -604,7 +613,7 @@ commitdata(dbsimple_session_type session)
     dbsimple__commit(&session->basesession);
 
     sqlite3_reset(session->commitStmt);
-    eatResult(session->handle, session->commitStmt, NULL);
+    affected = eatResult(session->handle, session->commitStmt, NULL);
 
     return 0;
 }
@@ -631,7 +640,7 @@ openconnection(char* location, int nfetchplans, dbsimple_fetchplan_array fetchpl
     /* :memory: */
     if (SQLITE_OK != (errorCode = sqlite3_open_v2(location, &handle, SQLITE_OPEN_READWRITE|SQLITE_OPEN_URI|SQLITE_OPEN_CREATE, NULL))) {
         reportError(handle, "error opening database");
-        connectionPtr = NULL;
+        *connectionPtr = NULL;
         returnCode = -1;
         if(errorCode != SQLITE_CANTOPEN)
             return -1;

@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include <sqlite3.h>
 #include <time.h>
+#include <assert.h>
 #include "dbsimple.h"
 #include "exampledb.h"
 
@@ -78,7 +79,7 @@ struct dbsimple_definition dbw_keydependencydefinition;
 
 struct dbsimple_field dbw_datafields[] = {
     { dbsimple_MASTERREFERENCES, &dbw_policydefinition,    offsetof(struct dbw_data, policies),   offsetof(struct dbw_data, npolicies) },
-    { dbsimple_MASTERREFERENCES, &dbw_policykeydefinition, -1, -1},
+    { dbsimple_STUBREFERENCES,   &dbw_policykeydefinition, -1, -1},
     { dbsimple_MASTERREFERENCES, &dbw_hsmkeydefinition,    offsetof(struct dbw_data, hsmkeys),    offsetof(struct dbw_data, nhsmkeys) },
     { dbsimple_MASTERREFERENCES, &dbw_zonedefinition,      offsetof(struct dbw_data, zones),      offsetof(struct dbw_data, nzones) },
 };
@@ -230,14 +231,14 @@ struct dbsimple_field dbw_keydependencyfields[] = {
     { dbsimple_UINT,           &dbw_keydependencydefinition, offsetof(struct dbw_keydependency, type),    -1 },
 };
 
-struct dbsimple_definition dbw_datadefinition =          { sizeof(struct dbw_data),          dbsimple_FLAG_SINGLETON,   sizeof(dbw_datafields)/sizeof(struct dbsimple_field),          dbw_datafields };
-struct dbsimple_definition dbw_policydefinition =        { sizeof(struct dbw_policy),        dbsimple_FLAG_HASREVISION, sizeof(dbw_policyfields)/sizeof(struct dbsimple_field),        dbw_policyfields,  };
-struct dbsimple_definition dbw_policykeydefinition =     { sizeof(struct dbw_policykey),     dbsimple_FLAG_HASREVISION, sizeof(dbw_policykeyfields)/sizeof(struct dbsimple_field),     dbw_policykeyfields };
-struct dbsimple_definition dbw_zonedefinition =          { sizeof(struct dbw_zone),          dbsimple_FLAG_HASREVISION, sizeof(dbw_zonefields)/sizeof(struct dbsimple_field),          dbw_zonefields };
-struct dbsimple_definition dbw_keydefinition =           { sizeof(struct dbw_key),           dbsimple_FLAG_HASREVISION, sizeof(dbw_keyfields)/sizeof(struct dbsimple_field),           dbw_keyfields };
-struct dbsimple_definition dbw_keystatedefinition =      { sizeof(struct dbw_keystate),      dbsimple_FLAG_HASREVISION, sizeof(dbw_keystatefields)/sizeof(struct dbsimple_field),      dbw_keystatefields };
-struct dbsimple_definition dbw_keydependencydefinition = { sizeof(struct dbw_keydependency), 0,                         sizeof(dbw_keydependencyfields)/sizeof(struct dbsimple_field), dbw_keydependencyfields };
-struct dbsimple_definition dbw_hsmkeydefinition =        { sizeof(struct dbw_hsmkey),        dbsimple_FLAG_HASREVISION, sizeof(dbw_hsmkeyfields)/sizeof(struct dbsimple_field),        dbw_hsmkeyfields };
+struct dbsimple_definition dbw_datadefinition =          { "dbw_data",          sizeof(struct dbw_data),          dbsimple_FLAG_SINGLETON,   sizeof(dbw_datafields)/sizeof(struct dbsimple_field),          dbw_datafields };
+struct dbsimple_definition dbw_policydefinition =        { "dbw_policy",        sizeof(struct dbw_policy),        dbsimple_FLAG_HASREVISION, sizeof(dbw_policyfields)/sizeof(struct dbsimple_field),        dbw_policyfields,  };
+struct dbsimple_definition dbw_policykeydefinition =     { "dbw_policykey",     sizeof(struct dbw_policykey),     dbsimple_FLAG_HASREVISION, sizeof(dbw_policykeyfields)/sizeof(struct dbsimple_field),     dbw_policykeyfields };
+struct dbsimple_definition dbw_zonedefinition =          { "dbw_zone",          sizeof(struct dbw_zone),          dbsimple_FLAG_HASREVISION, sizeof(dbw_zonefields)/sizeof(struct dbsimple_field),          dbw_zonefields };
+struct dbsimple_definition dbw_keydefinition =           { "dbw_key",           sizeof(struct dbw_key),           dbsimple_FLAG_HASREVISION, sizeof(dbw_keyfields)/sizeof(struct dbsimple_field),           dbw_keyfields };
+struct dbsimple_definition dbw_keystatedefinition =      { "dbw_keystate",      sizeof(struct dbw_keystate),      dbsimple_FLAG_HASREVISION, sizeof(dbw_keystatefields)/sizeof(struct dbsimple_field),      dbw_keystatefields };
+struct dbsimple_definition dbw_keydependencydefinition = { "dbw_keydependency", sizeof(struct dbw_keydependency), 0,                         sizeof(dbw_keydependencyfields)/sizeof(struct dbsimple_field), dbw_keydependencyfields };
+struct dbsimple_definition dbw_hsmkeydefinition =        { "dbw_hsmkey",        sizeof(struct dbw_hsmkey),        dbsimple_FLAG_HASREVISION, sizeof(dbw_hsmkeyfields)/sizeof(struct dbsimple_field),        dbw_hsmkeyfields };
 
 static struct dbsimple_definition* dbw_definitions[] = {
     &dbw_datadefinition,
@@ -367,6 +368,7 @@ example_dbtest(void)
             }
         }
         printf("%d zones\n",data->nzones);
+        assert(data->zones[0]->policy != NULL);
         for(int i = 0; i<data->nzones; i++) {
             printf("zone %ld %s\n",data->zones[i]->id, data->zones[i]->name);
             printf("  policy               %s\n",(data->zones[i]->policy ? data->zones[i]->policy->name : "UNKNOWN"));
@@ -404,6 +406,22 @@ example_dbtest(void)
         dbsimple_commit(session);
     }
 
+    data = dbsimple_fetch(session, fetchplanDefault);
+    if(data) {
+        assert(data->zones[1]->policy != NULL);
+        free(data->zones[1]->name);
+        assert(data->zones[1]->policy != NULL);
+        data->zones[1]->name = strdup("MODIFIED");
+        assert(data->zones[1]->policy != NULL);
+        dbsimple_dirty(session, data->zones[1]);
+        assert(data->zones[1]->policy != NULL);
+        dbsimple_commit(session);
+    }
+    data = dbsimple_fetch(session, fetchplanDefault);
+    if(data) {
+        dbsimple_delete(session, data->zones[0]);
+        dbsimple_commit(session);
+    }
     dbsimple_closesession(session);
     dbsimple_closeconnection(connection);
 

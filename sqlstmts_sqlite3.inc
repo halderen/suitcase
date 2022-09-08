@@ -219,7 +219,7 @@ const char* const sqlstmts_sqlite3_default_[] = {
   "SELECT id, rev, policyId, policyId, repository, role, algorithm, bits, lifetime, standby, manualRollover, rfc5011, minimize\n"
   "FROM policyKey",
 
-  "INSERT OR REPLACE INTO policyKey ( id, rev, policyId, role, algorithm, bits, lifetime, repository, standby, manualRollover, rfc5011, minimize )\n"
+  "INSERT OR REPLACE INTO policyKey ( id, rev, policyId, repository, role, algorithm, bits, lifetime, standby, manualRollover, rfc5011, minimize )\n"
   "VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )",
 
   "DELETE FROM policykey WHERE id = ? AND rev = ?",

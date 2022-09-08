@@ -119,6 +119,8 @@ dbsimple__referencebyptr(struct dbsimple_sessionbase* session, struct dbsimple_d
         object->type = def;
         object->data = ptr;
         object->state = OBJNEW;
+        object->keyname = NULL;
+        object->keyid = 0;
         object->revision = 0;
         object->next = NULL;
         object->backpatches = NULL;
@@ -172,6 +174,8 @@ dbsimple__committraverse(struct dbsimple_sessionbase* session, struct object* ob
             case dbsimple_STUBREFERENCES:
                 break;
             case dbsimple_MASTERREFERENCES:
+                assert(def->fields[i].countoffset >= 0);
+                assert(def->fields[i].fieldoffset >= 0);
                 refarraycount = (int*)&(object->data[def->fields[i].countoffset]);
                 refarray = (void***)&(object->data[def->fields[i].fieldoffset]);
                 for(int j=0; j<*refarraycount; j++) {
@@ -225,6 +229,7 @@ dbsimple__getobject(struct dbsimple_sessionbase* session, enum objectstate state
     } else if(object->data == NULL && state != OBJUNKNOWN) {
         object->data = calloc(1, (*def)->size);
         object->state = state;
+        tree_insert(session->pointermap, object);
     }
     return object;
 }
@@ -340,6 +345,8 @@ dbsimple__commit(struct dbsimple_sessionbase* session)
     tree_foreach(session->objectmap, (tree_visitor_type) deleteobject, (void*) session);
     tree_destroy(session->objectmap);
     tree_destroy(session->pointermap);
+    session->objectmap = NULL;
+    session->pointermap = NULL;
 }
 
 void

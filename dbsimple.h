@@ -60,6 +60,7 @@ struct dbsimple_field {
 #define dbsimple_FLAG_AUTOREMOVE     0x0008
 
 struct dbsimple_definition {
+    char* name;
     size_t size;
     int flags;
     int nfields;

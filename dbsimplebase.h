@@ -49,6 +49,7 @@ struct dbsimple_fieldimpl {
 };
 
 struct dbsimple_definitionimpl {
+    char* name;
     size_t size;
     int flags;
     int nfields;

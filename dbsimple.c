@@ -81,6 +81,7 @@ dbsimple_fetchplan(dbsimple_fetchplan_type* fetchplan, dbsimple_connection_type 
     for(int i=0; i<(*fetchplan)->ndefinitions; i++) {
         struct dbsimple_definition* d = connection->baseconnection.definitions[i];
         definitions[i] = malloc(sizeof(struct dbsimple_definitionimpl));
+        definitions[i]->name    = strdup(d->name);
         definitions[i]->nfields = d->nfields;
         definitions[i]->fields  = malloc(sizeof(struct dbsimple_fieldimpl) * d->nfields);;
         definitions[i]->flags   = d->flags;

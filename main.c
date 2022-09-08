@@ -138,7 +138,7 @@ main(int argc, char* argv[])
     char* path;
     settings_getcompound(cfghandle, &count, "modules.libraries");
     for(int i=0; i<count; i++) {
-        settings_getstring(cfghandle, &path, "", "modules.libraries.%d", i);
+        settings_getstringdefault(cfghandle, &path, "", "modules.libraries.%d", i);
 	fprintf(stderr, "loading %s\n",path);
         dlopen(path, RTLD_LAZY|RTLD_LOCAL|RTLD_DEEPBIND);
         free(path);

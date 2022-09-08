@@ -211,7 +211,7 @@ DELETE FROM policy WHERE id = ? AND rev = ?;
 SELECT id, rev, policyId, policyId, repository, role, algorithm, bits, lifetime, standby, manualRollover, rfc5011, minimize
 FROM policyKey;
 
-INSERT OR REPLACE INTO policyKey ( id, rev, policyId, role, algorithm, bits, lifetime, repository, standby, manualRollover, rfc5011, minimize )
+INSERT OR REPLACE INTO policyKey ( id, rev, policyId, repository, role, algorithm, bits, lifetime, standby, manualRollover, rfc5011, minimize )
 VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );
 
 DELETE FROM policykey WHERE id = ? AND rev = ?;
