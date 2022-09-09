@@ -97,7 +97,14 @@ main(int argc, char* argv[])
     }
 
     /* Read configuration file */
-    settings_configure(&cfghandle, QUOTE(SYSCONFDIR), cfgfile, -1);
+    if(cfgfile) {
+        if(cfgfile[0]=='/') {
+            printf("loading configuration %s\n",cfgfile);
+        } else {
+            printf("loading configuration %s from %s\n",cfgfile,QUOTE(SYSCONFDIR));
+        }
+        settings_configure(&cfghandle, QUOTE(SYSCONFDIR), cfgfile, -1);
+    }
 
     /* Steps to act as a daemon process*/
     if (optdaemon) {
@@ -139,8 +146,11 @@ main(int argc, char* argv[])
     settings_getcompound(cfghandle, &count, "modules.libraries");
     for(int i=0; i<count; i++) {
         settings_getstringdefault(cfghandle, &path, "", "modules.libraries.%d", i);
-	fprintf(stderr, "loading %s\n",path);
-        dlopen(path, RTLD_LAZY|RTLD_LOCAL|RTLD_DEEPBIND);
+        if(dlopen(path, RTLD_LAZY|RTLD_LOCAL|RTLD_DEEPBIND)) {
+	    fprintf(stderr, "loaded library %s\n",path);
+        } else {
+	    fprintf(stderr, "failed to load %s\n",path);
+        }
         free(path);
     }
 

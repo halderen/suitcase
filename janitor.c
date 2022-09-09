@@ -56,6 +56,18 @@
 
 #include "janitor.h"
 
+#ifndef BACKTRACE_H
+typedef void (*backtrace_error_callback) (void *data, const char *msg,   
+                                          int errnum);             
+typedef int (*backtrace_full_callback) (void *data, uintptr_t pc,
+                                        const char *filename, int lineno,
+                                        const char *function);        
+extern int backtrace_full (struct backtrace_state *state, int skip,
+                           backtrace_full_callback callback,
+                           backtrace_error_callback error_callback,
+                           void *data);
+#endif
+
 static struct sigaction original_quit_action;
 static struct sigaction original_abrt_action;
 static struct sigaction original_segv_action;
@@ -64,8 +76,8 @@ static struct sigaction original_ill_action;
 static struct sigaction original_bus_action;
 static struct sigaction original_sys_action;
 
-static janitor_alertfn_t alert;
-static janitor_alertfn_t report;
+static janitor_alertfn_type alert;
+static janitor_alertfn_type report;
 
 struct janitor_threadclass_struct {
     char* name;
@@ -77,7 +89,7 @@ struct janitor_threadclass_struct {
 };
 
 int
-janitor_threadclass_create(janitor_threadclass_t* threadclass, const char* name)
+janitor_threadclass_create(janitor_threadclass_type* threadclass, const char* name)
 {
     *threadclass = malloc(sizeof(struct janitor_threadclass_struct));
     (*threadclass)->name = strdup(name);
@@ -89,13 +101,13 @@ janitor_threadclass_create(janitor_threadclass_t* threadclass, const char* name)
 }
 
 char*
-janitor_threadclass_name(janitor_threadclass_t threadclass)
+janitor_threadclass_name(janitor_threadclass_type threadclass)
 {
     return threadclass->name;
 }
 
 void
-janitor_threadclass_destroy(janitor_threadclass_t threadclass)
+janitor_threadclass_destroy(janitor_threadclass_type threadclass)
 {
     if (threadclass->hasattr) {
         pthread_attr_destroy(&threadclass->attr);
@@ -105,7 +117,7 @@ janitor_threadclass_destroy(janitor_threadclass_t threadclass)
 }
 
 void
-janitor_threadclass_setdetached(janitor_threadclass_t threadclass)
+janitor_threadclass_setdetached(janitor_threadclass_type threadclass)
 {
     threadclass->detached = 1;
     if (!threadclass->hasattr) {
@@ -115,19 +127,19 @@ janitor_threadclass_setdetached(janitor_threadclass_t threadclass)
 }
 
 void
-janitor_threadclass_setautorun(janitor_threadclass_t threadclass)
+janitor_threadclass_setautorun(janitor_threadclass_type threadclass)
 {
     threadclass->autorun = 1;
 }
 
 void
-janitor_threadclass_setblockedsignals(janitor_threadclass_t threadclass)
+janitor_threadclass_setblockedsignals(janitor_threadclass_type threadclass)
 {
     threadclass->blocksignals = 1;
 }
 
 void
-janitor_threadclass_setminstacksize(janitor_threadclass_t threadclass, size_t minstacksize)
+janitor_threadclass_setminstacksize(janitor_threadclass_type threadclass, size_t minstacksize)
 {
     size_t stacksize;
     if (!threadclass->hasattr) {
@@ -150,7 +162,7 @@ fail(const char* file, int line, const char* func, const char* expr, int stat)
 }
 
 void
-janitor_initialize(janitor_alertfn_t alertfn, janitor_alertfn_t reportfn)
+janitor_initialize(janitor_alertfn_type alertfn, janitor_alertfn_type reportfn)
 {
     report = reportfn;
     alert = alertfn;
@@ -160,12 +172,12 @@ struct janitor_thread_struct {
     struct janitor_thread_struct* next;
     struct janitor_thread_struct* prev;
     pthread_t thread;
-    janitor_runfn_t runfunc;
+    janitor_runfn_type runfunc;
     void* rundata;
     int isstarted;
     int blocksignals;
     pthread_barrier_t startbarrier;
-    janitor_threadclass_t threadclass;
+    janitor_threadclass_type threadclass;
 };
 
 static pthread_mutex_t threadlock = PTHREAD_MUTEX_INITIALIZER;
@@ -182,7 +194,7 @@ threadlocatorinitialize(void)
 }
 
 static void
-janitor_thread_unregister(janitor_thread_t info)
+janitor_thread_unregister(janitor_thread_type info)
 {
     int err, errcount;
     if (info == NULL)
@@ -224,7 +236,7 @@ fail:
 }
 
 static void
-janitor_thread_dispose(janitor_thread_t info)
+janitor_thread_dispose(janitor_thread_type info)
 {
     if (info == NULL)
         return;
@@ -250,7 +262,7 @@ janitor_thread_dispose(janitor_thread_t info)
 }
 
 static void
-janitor_thread_register(janitor_thread_t info)
+janitor_thread_register(janitor_thread_type info)
 {
     pthread_mutex_lock(&threadlock);
     pthread_once(&threadlocatorinitializeonce, threadlocatorinitialize);
@@ -267,7 +279,7 @@ janitor_thread_register(janitor_thread_t info)
 }
 
 static void
-janitor_thread_finished(janitor_thread_t info)
+janitor_thread_finished(janitor_thread_type info)
 {
     if (!info->threadclass->detached) {
         pthread_mutex_lock(&threadlock);
@@ -323,7 +335,7 @@ runthread(void* data)
 }
 
 int
-janitor_thread_create(janitor_thread_t* thread, janitor_threadclass_t threadclass, janitor_runfn_t func, void*data)
+janitor_thread_create(janitor_thread_type* thread, janitor_threadclass_type threadclass, janitor_runfn_type func, void*data)
 {
     struct janitor_thread_struct* info;
     info = malloc(sizeof (struct janitor_thread_struct));
@@ -344,13 +356,13 @@ fail:
     return 1;
 }
 
-void janitor_thread_signal(janitor_thread_t thread)
+void janitor_thread_signal(janitor_thread_type thread)
 {
     pthread_kill(thread->thread, SIGHUP);
 }
 
 void
-janitor_thread_start(janitor_thread_t thread)
+janitor_thread_start(janitor_thread_type thread)
 {
     int isstarted;
 
@@ -365,7 +377,7 @@ janitor_thread_start(janitor_thread_t thread)
 }
 
 int
-janitor_thread_join(janitor_thread_t thread)
+janitor_thread_join(janitor_thread_type thread)
 {
     int status;
     status = pthread_join(thread->thread, NULL);
@@ -374,7 +386,7 @@ janitor_thread_join(janitor_thread_t thread)
 }
 
 int
-janitor_thread_tryjoinall(janitor_threadclass_t threadclass)
+janitor_thread_tryjoinall(janitor_threadclass_type threadclass)
 {
     struct janitor_thread_struct* thread;
     struct janitor_thread_struct* foundthread;
@@ -429,7 +441,7 @@ janitor_thread_tryjoinall(janitor_threadclass_t threadclass)
 }
 
 void
-janitor_thread_joinall(janitor_threadclass_t threadclass)
+janitor_thread_joinall(janitor_threadclass_type threadclass)
 {
     int moreleft;
     do {

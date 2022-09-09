@@ -87,6 +87,8 @@ settings__parselocate_yaml(document_type document, node_type node, const char* f
     char* arg;
     yaml_node_t* child;
     if(node == NULL) {
+        if (document == NULL)
+            return NULL;
         node = yaml_document_get_root_node(document);
     }
     if (fmt == NULL) {

@@ -47,7 +47,8 @@ DX_INIT_DOXYGEN(${PACKAGE_NAME}, [Doxyfile], [doxygen])
 AC_CHECK_LIB(pthread, pthread_barrier_wait, [AC_DEFINE([HAVE_PTHREAD_BARRIER], [1], [Define if pthread barrier supported])])
 
 AC_CHECK_FUNC(backtrace, [AC_DEFINE([HAVE_BACKTRACE], [1], [Define if backtrace supported])])
-AC_CHECK_LIB(backtrace, backtrace_full, [AC_DEFINE([HAVE_BACKTRACE_FULL], [1], [Define if backtrace_full supported]) LIBS="$LIBS -lbacktrace"])
+# Possibly also force using flag -rdynamic as well?
+AC_CHECK_LIB(gdruntime, backtrace_full, [AC_DEFINE([HAVE_BACKTRACE_FULL], [1], [Define if backtrace_full supported]) LIBS="$LIBS -lgdruntime"])
 
 AM_CONDITIONAL([HAVE_MYSQL],[grep HAVE_MYSQL confdefs.h > /dev/null])
 AM_CONDITIONAL([HAVE_SQLITE3],[grep HAVE_SQLITE3 confdefs.h > /dev/null])

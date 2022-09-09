@@ -31,7 +31,8 @@
 #error "never define NOTDEFINED"
 #endif
 
-#define QUOTE(ARG) #ARG
+#define QUOTE_(ARG) #ARG
+#define QUOTE(ARG) QUOTE_(ARG)
 
 #ifdef __cplusplus
 #include <cstdio>
