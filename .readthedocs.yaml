@@ -12,4 +12,5 @@ mkdocs:
 python:
    install:
    - method: pip
-   - path: docs
+     path: docs
+     extra_requirements: [ doc ]
