@@ -1,3 +1,6 @@
 site_name: Suitcase
-docs_dir: .
+docs_dir: docs
 site_dir: site
+[31mERROR    -  [0mConfig value 'site_dir': The 'site_dir' should not be within the 'docs_dir' as this leads to the build directory being copied into itself and duplicate nested files in the 'site_dir'. (
+site_dir: '/home/docs/checkouts/readthedocs.org/user_builds/suitcase/checkouts/latest/docs/_readthedocs/html'
+docs_dir: '/home/docs/checkouts/readthedocs.org/user_builds/suitcase/checkouts/latest/docs')
