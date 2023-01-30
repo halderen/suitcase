@@ -5,4 +5,8 @@ plugins:
   - include-markdown
 
 nav:
-  - Home: 'index.md'
+  - 'Home': 'index.md'
+  - 'Getting started':
+    - 'Install package': 'guide/installpackage.md'
+    - 'Build from source': 'guide/buildsource.md'
+    - 'Getting your HSM': 'guide/hsm.md'
