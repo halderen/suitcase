@@ -10,3 +10,8 @@ nav:
     - 'Install package': 'guide/installpackage.md'
     - 'Build from source': 'guide/buildsource.md'
     - 'Getting your HSM': 'guide/hsm.md'
+  - 'Reference guide': 'reference.md'
+  - 'Configuration guide': 
+    - 'conf.xml': 'configuration/conf.md'
+    - 'kasp.xml': 'configuration/kasp.md'
+    - 'addns.xml': 'configuration/addns.md'
