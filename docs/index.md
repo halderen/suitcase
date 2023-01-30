@@ -1,6 +1,6 @@
-```{include} ../README.md
-:relative-images:
-```
+{%
+  include-markdown "../README.md"
+%}
 
 ```{warning}
 This library is under active development.
