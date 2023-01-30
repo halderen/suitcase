@@ -2,6 +2,4 @@ site_name: Suitcase
 docs_dir: docs
 
 plugins:
-  - material
-  - mermaid2
   - include-markdown
