@@ -1,7 +1,2 @@
 mkdocs
-mkdocs-include-markdown-plugin==4.0.3
-jinja2>=3.0
-markdown>=3.2
-mkdocs-material-extensions>=1.1
-pygments>=2.14
-pymdown-extensions>=9.9.1
+mkdocs-include-plugin
