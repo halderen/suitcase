@@ -2,4 +2,22 @@ site_name: Suitcase
 docs_dir: docs
 
 plugins:
+  - typeset
+  - material
+  - mermaid2
   - include-markdown
+
+nav:
+  - Home: 'index.md'
+  - 'Getting started':
+  - 'Reference guide': 'writing-your-docs.md'
+  - 'Configuration guide': 'configuration.md'
+    - 'conf.xml': 'configuration/conf.md'
+    - 'kasp.xml': 'configuration/kasp.md'
+    - 'addns.xml': 'configuration/addns.md'
+  - Howto:
+    - '
+  - About:
+    - 'License': 'license.md'
+    - 'Authors': 'authors.md'
+    - 'Release Notes': 'release-notes.md'
