@@ -3,3 +3,21 @@ docs_dir: docs
 
 plugins:
   - include-markdown
+
+nav:
+  - Home: 'index.md'
+  - 'Getting started':
+    - 'Install package': 'guide/installpackage.md'
+    - 'Build from source': 'guide/buildsource.md'
+    - 'Getting your HSM': 'guide/hsm.md'
+  - 'Reference guide': 'reference.md'
+  - 'Configuration guide': 
+    - 'conf.xml': 'configuration/conf.md'
+    - 'kasp.xml': 'configuration/kasp.md'
+    - 'addns.xml': 'configuration/addns.md'
+  - Howto:
+    - 'Algorithm Rollover': 'howto/algorollover.md''
+  - About:
+    - 'License': 'license.md'
+    - 'Authors': 'authors.md'
+    - 'Release Notes': 'release-notes.md'
