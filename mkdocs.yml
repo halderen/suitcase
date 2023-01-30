@@ -1,2 +1,5 @@
 site_name: Suitcase
 docs_dir: docs
+
+plugins:
+  - include-markdown
