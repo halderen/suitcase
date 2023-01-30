@@ -2,8 +2,8 @@ site_name: Suitcase
 docs_dir: docs
 
 plugins:
-  - material
   - include-markdown
+  - mermaid2
 
 nav:
   - 'Home': 'index.md'
