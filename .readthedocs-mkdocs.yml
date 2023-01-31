@@ -5,6 +5,10 @@ plugins:
   - include-markdown
   - mermaid2
 
+theme:
+  name: readthedocs
+  highlightjs: false
+
 nav:
   - 'Home': 'index.md'
   - 'Getting started':
